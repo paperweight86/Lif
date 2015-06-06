@@ -158,7 +158,4 @@
       <Filter>Terrain</Filter>
     </ClCompile>
   </ItemGroup>
-  <ItemGroup>
-    <Text Include="Todo.txt" />
-  </ItemGroup>
 </Project>

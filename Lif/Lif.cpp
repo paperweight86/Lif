@@ -25,7 +25,7 @@ using namespace std;
 #include "CompressedData.h"
 
 //#include <png.h>
-#include "zlib.h"
+//#include "zlib.h"
 
 #include "LSystemTree.h"
 
@@ -294,38 +294,52 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 	CreateColourFromRGB(col, 0x49311cFF);
 	rhandle hRectFillBrush = uiRenderer->CreateBrush(col);
 	g_hBranchBrush = hRectFillBrush;
-	CreateColourFromRGB(leafCol, 0x00FF0022);
+	CreateColourFromRGB(leafCol, 0x00CC0022);
 	rhandle hLeafBrush = uiRenderer->CreateBrush(leafCol);
 
 	int trunks = 0;
 
-	// TODO: more control
-	//		- reach of the branches
-	//      - random death/stunting
-	//      - overgrowth death/stunting
-	//		- noise
-	//	    - live editing
-	CLSystemTree tree;
-	tree.m_maxTrunks = 1;
-	//tree.m_scale /= 1.5f;
-	tree.m_maxDepth = 10;
-	tree.m_interval = 3.14f / 10.0f;
-	tree.m_maxTrunkDev = 3.14f / 8.0f;
-	tree.m_seed = 214;
-	tree.m_maxBranchAngle = -3.14f;
-	tree.Generate();
-	auto treeVerts = tree.GetVerts();
-	auto treeLeaves = tree.GetLeaves();
-	std::size_t polyVerts = treeVerts.size();
-	float2* verts = new float2[polyVerts];
-	int32 width = window.Width();
-	int32 height = window.Height();
-	for (int i = 0; i < polyVerts; ++i)
+	const int numTrees = 10;
+	rhandle* trees = new rhandle[numTrees];
+	std::vector<int>* leafIndexes = new std::vector<int>[numTrees];
+	std::vector<float2>* treeVertices = new std::vector<float2>[numTrees];
+	for (int i = 0; i < numTrees; ++i)
 	{
-		verts[i] = float2(treeVerts[i].x + (float)(width / 2), treeVerts[i].y + height);
+		// TODO: more control
+		//		- reach of the branches
+		//      - random death/stunting
+		//      - overgrowth death/stunting
+		//		- noise
+		//	    - live editing
+		CLSystemTree tree;
+		tree.m_maxTrunks = 1;
+		tree.m_scale = 6.0f;
+		tree.m_maxDepth = 8;
+		tree.m_interval = 3.14f / 7.0f;
+		tree.m_maxTrunkDev = 3.14f / 8.0f;
+		tree.m_seed = 214 + i;
+		tree.m_maxBranchAngle = 0.0f;
+		tree.m_trunkScale = 0.1f;
+		tree.m_maxTrunkLen = 10.0f;
+		tree.Generate();
+		auto treeVerts = tree.GetVerts();
+		// TODO:
+		//std::move()
+		leafIndexes[i] = tree.GetLeaves();
+		std::size_t polyVerts = treeVerts.size();
+		float2* verts = new float2[polyVerts];
+		int32 width = window.Width();
+		int32 height = window.Height();
+		for (int j = 0; j < polyVerts; ++j)
+		{
+			verts[j] = float2(treeVerts[j].x + (float)(width / 2), treeVerts[j].y + height);
+			treeVertices[i].push_back(verts[j]);
+		}
+		rhandle hOnePolyTree = uiRenderer->CreateFillGeometry(verts, polyVerts);
+		delete verts;
+		trees[i] = hOnePolyTree;
 	}
-	rhandle hOnePolyTree = uiRenderer->CreateFillGeometry(verts, polyVerts);
-	rhandle hLeaf = uiRenderer->CreateEllipseGeometry(float2(), float2(10.0f, 10.0f));
+	rhandle hLeaf = uiRenderer->CreateEllipseGeometry(float2(), float2(2.0f, 2.0f));
 
 	window.Show();
 	while (!window.ShouldQuit())
@@ -335,7 +349,19 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 		uiRenderer->BeginDraw();
 
 		// TODO: now optimise for overdraw
-		uiRenderer->DrawFillGeometry(hOnePolyTree, hRectFillBrush);
+		for (int i = 0; i < numTrees; ++i)
+		{
+			float2 treePos = float2(-500.0f + ((float)i*100.0f), 0.0f);
+			uiRenderer->DrawFillGeometry(trees[i], hRectFillBrush, treePos);
+
+			for (auto leafIter = leafIndexes[i].begin(); leafIter != leafIndexes[i].end(); ++leafIter)
+			{
+				float2 pos = treeVertices[i][(*leafIter)];
+				uiRenderer->DrawFillGeometry(hLeaf, hLeafBrush, float2(pos.x + treePos.x, pos.y + treePos.y));
+			}
+		}
+
+		//uiRenderer->DrawFillGeometry(hOnePolyTree, hRectFillBrush);
 
 		//for (auto leafIter = treeLeaves.begin(); leafIter != treeLeaves.end(); ++leafIter)
 		//{
