@@ -6,7 +6,7 @@
 	Referances: Derived From an explaination on http://freespace.virgin.net/hugo.elias/models/m_perlin.htm
 */
 
-namespace Perlin // all funations return noise in the range -1.0f - 1.0f
+namespace Perlin // all functions return noise in the range -1.0f - 1.0f
 {
 	//base noise function
 	float Noise2D( __int32 x, __int32 y );

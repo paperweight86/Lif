@@ -9,18 +9,6 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Source Files\Shared">
-      <UniqueIdentifier>{eebde6ed-3ab6-40cf-b54b-7f1090918e96}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Shared\Window">
-      <UniqueIdentifier>{48f12d04-af6a-46ff-8897-9c513cb7fba8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Shared\Logger">
-      <UniqueIdentifier>{e8b573f8-9278-4f8e-bcbc-db14e8da4fb8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Shared\Observer">
-      <UniqueIdentifier>{0bfc987b-1818-4ee8-ad34-32ec75a948a9}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\Entity">
       <UniqueIdentifier>{1549ea8c-92d9-4010-9958-9aa4f024d27c}</UniqueIdentifier>
     </Filter>
@@ -39,6 +27,12 @@
     <Filter Include="Terrain\HexCellularAutomata">
       <UniqueIdentifier>{05a0d52f-7a63-44a7-bb27-460a0cadc94f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{cd4518e2-a13e-4be0-88fd-127627742f97}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="inc">
+      <UniqueIdentifier>{43f2e62c-1a28-43e7-b44f-632f29d79462}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -46,27 +40,6 @@
     </ClInclude>
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Shared\IWindow.h">
-      <Filter>Source Files\Shared\Window</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Shared\WinWindow.h">
-      <Filter>Source Files\Shared\Window</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Shared\Logger.h">
-      <Filter>Source Files\Shared\Logger</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Shared\ScopedLog.h">
-      <Filter>Source Files\Shared\Logger</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Shared\IObservable.h">
-      <Filter>Source Files\Shared\Observer</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Shared\IObserver.h">
-      <Filter>Source Files\Shared\Observer</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Shared\IEventArgs.h">
-      <Filter>Source Files\Shared\Observer</Filter>
     </ClInclude>
     <ClInclude Include="EventTypes.h">
       <Filter>Source Files</Filter>
@@ -101,37 +74,16 @@
     <ClInclude Include="HCAErosionCell.h">
       <Filter>Terrain\HexCellularAutomata</Filter>
     </ClInclude>
-    <ClInclude Include="LSystemTree.h">
-      <Filter>Tree\LSystem</Filter>
+    <ClInclude Include="inc\PerlinNoise.h">
+      <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="PerlinNoise.h">
-      <Filter>Terrain</Filter>
+    <ClInclude Include="inc\LSystemTree.h">
+      <Filter>inc</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Shared\IWindow.cpp">
-      <Filter>Source Files\Shared\Window</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Shared\WinWindow.cpp">
-      <Filter>Source Files\Shared\Window</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Shared\Logger.cpp">
-      <Filter>Source Files\Shared\Logger</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Shared\ScopedLog.cpp">
-      <Filter>Source Files\Shared\Logger</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Shared\IObservable.cpp">
-      <Filter>Source Files\Shared\Observer</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Shared\IObserver.cpp">
-      <Filter>Source Files\Shared\Observer</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Shared\IEventArgs.cpp">
-      <Filter>Source Files\Shared\Observer</Filter>
     </ClCompile>
     <ClCompile Include="Lif.cpp">
       <Filter>Source Files</Filter>
@@ -157,5 +109,8 @@
     <ClCompile Include="PerlinNoise.cpp">
       <Filter>Terrain</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\README.md" />
   </ItemGroup>
 </Project>

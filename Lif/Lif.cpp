@@ -27,11 +27,11 @@ using namespace std;
 //#include <png.h>
 //#include "zlib.h"
 
-#include "LSystemTree.h"
+#include "inc\LSystemTree.h"
 
 #include "HCAErosion.h"
 
-#include "PerlinNoise.h"
+#include "inc\PerlinNoise.h"
 
 using namespace lif;
 
@@ -84,33 +84,33 @@ int _tmain(int argc, _TCHAR* argv[])
 
 rhandle g_hBranchBrush;
 
-int lif_main()
-{
-	CreateScopedLogger();
-
-	uint32 width = 900;
-	uint32 height = 600;
-
-	CWinWindow window;
-	window.Initialise(width, height, false, _T("Lif"));
-	I2DRenderer* uiRenderer = nullptr;
-	if (!C2DRendererFactory::Create(&uiRenderer, e2DRenderer_Direct2D))
-	{
-		Logger.Error(_T("Fatal: Failed to create Direct2D UI renderer"));
-		return -1;
-	}
-	if (!uiRenderer->Initialise(window.GetHandle(), width, height))
-	{
-		Logger.Error(_T("Fatal: Failed to initialise UI renderer"));
-		return -1;
-	}
-
-	doTree(window, uiRenderer);
-
-	delete uiRenderer;
-
-	return 0;
-}
+//int lif_main()
+//{
+//	CreateScopedLogger();
+//
+//	uint32 width = 900;
+//	uint32 height = 600;
+//
+//	CWinWindow window;
+//	window.Initialise(width, height, false, _T("Lif"));
+//	I2DRenderer* uiRenderer = nullptr;
+//	if (!C2DRendererFactory::Create(&uiRenderer, e2DRenderer_Direct2D))
+//	{
+//		Logger.Error(_T("Fatal: Failed to create Direct2D UI renderer"));
+//		return -1;
+//	}
+//	if (!uiRenderer->Initialise(window.GetHandle(), width, height))
+//	{
+//		Logger.Error(_T("Fatal: Failed to initialise UI renderer"));
+//		return -1;
+//	}
+//
+//	doTree(window, uiRenderer);
+//
+//	delete uiRenderer;
+//
+//	return 0;
+//}
 
 void DoErosion(CWinWindow& window, I2DRenderer* uiRenderer)
 {
@@ -310,22 +310,23 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 		//      - random death/stunting
 		//      - overgrowth death/stunting
 		//		- noise
-		//	    - live editing
+		//	    - live editing (C# wrapper?)
 		CLSystemTree tree;
 		tree.m_maxTrunks = 1;
 		tree.m_scale = 6.0f;
 		tree.m_maxDepth = 8;
 		tree.m_interval = 3.14f / 7.0f;
+		tree.m_branchPow = 1.0f;
 		tree.m_maxTrunkDev = 3.14f / 8.0f;
 		tree.m_seed = 214 + i;
 		tree.m_maxBranchAngle = 0.0f;
 		tree.m_trunkScale = 0.1f;
 		tree.m_maxTrunkLen = 10.0f;
 		tree.Generate();
-		auto treeVerts = tree.GetVerts();
-		// TODO:
-		//std::move()
-		leafIndexes[i] = tree.GetLeaves();
+		std::vector<float3> treeVerts;
+		tree.ConsumeVertexBuffer(treeVerts);
+		// uses move to get leaf data
+		tree.ConsumeAuxIndexBuffer(_T("leaves"), leafIndexes[i]);
 		std::size_t polyVerts = treeVerts.size();
 		float2* verts = new float2[polyVerts];
 		int32 width = window.Width();
