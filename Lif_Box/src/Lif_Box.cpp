@@ -23,6 +23,7 @@ using namespace std;
 
 #include "LSystemTree.h"
 using namespace lif;
+using namespace uti;
 
 struct branchRect
 {
@@ -50,19 +51,80 @@ int   g_Seed = rand();
 rhandle g_hBranchBrush;
 rhandle hLeafBrush;
 
-bool doSlider( I2DRenderer* pRenderer, const tchar*, SRect rect, float* pValue, float valueMin, float valueMax)
+int16 g_x = 0;
+int16 g_y = 0;
+int16 g_xd = 0;
+int16 g_yd = 0;
+bool g_rButton;
+bool g_mButton;
+bool g_lButton;
+int16 g_wheelDelta;
+
+tchar g_valueBuffer[255];
+
+bool doSlider( I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pValue, float valueMin, float valueMax)
 {
-	SColour col;
-	CreateColourFromRGB(col, 0xCC0000FF);
-	pRenderer->DrawRectangle( pRenderer->CreateBrush(col), rect );
-	float percentage = (*pValue - valueMin) / (valueMax - valueMin);
-	float posOffset = rect.w * percentage;
-	float markerWidth = 3.0f;
-	SRect markerRect = SRect(rect.x + posOffset - markerWidth/2.0f, rect.y, markerWidth, rect.h);
-	CreateColourFromRGB(col, 0xFFFFFFFF);
-	pRenderer->DrawRectangle(pRenderer->CreateBrush(col), markerRect);
+	_stprintf_s<255>(g_valueBuffer, _T("%f"), (*pValue));
+	if (g_rButton && g_x > rect.x && g_x < rect.x+rect.w && g_y > rect.y && g_y < rect.y+rect.h )
+	{
+		SColour col;
+		CreateColourFromRGB(col, 0xCC0000FF);
+		pRenderer->DrawRectangle(pRenderer->CreateBrush(col), rect);
+		float percentage = (*pValue - valueMin) / (valueMax - valueMin);
+		float posOffset = rect.w * percentage;
+		float markerWidth = 3.0f;
+		SRect markerRect = SRect(g_x - markerWidth / 2.0f, rect.y, markerWidth, rect.h);
+		float posInSlider = g_x - rect.x - markerWidth / 2.0f;
+		percentage = posInSlider / rect.w;
+		(*pValue) = percentage * (valueMax - valueMin) + valueMin;
+		CreateColourFromRGB(col, 0xFFFFFFFF);
+		pRenderer->DrawRectangle(pRenderer->CreateBrush(col), markerRect);
+	}
+	else if (g_wheelDelta != 0 && g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h)
+	{
+		(*pValue) += g_wheelDelta * 0.01f * ((valueMax - valueMin) + valueMin);
+		g_wheelDelta = 0; // nasty...
+		SColour col;
+		CreateColourFromRGB(col, 0xCC0000FF);
+		pRenderer->DrawRectangle(pRenderer->CreateBrush(col), rect);
+		float percentage = (*pValue - valueMin) / (valueMax - valueMin);
+		float posOffset = rect.w * percentage;
+		float markerWidth = 3.0f;
+		SRect markerRect = SRect(rect.x + posOffset - markerWidth / 2.0f, rect.y, markerWidth, rect.h);
+		CreateColourFromRGB(col, 0xFFFFFFFF);
+		pRenderer->DrawRectangle(pRenderer->CreateBrush(col), markerRect);
+	}
+	else
+	{
+		SColour col;
+		CreateColourFromRGB(col, 0xCC0000FF);
+		pRenderer->DrawRectangle(pRenderer->CreateBrush(col), rect);
+		float percentage = (*pValue - valueMin) / (valueMax - valueMin);
+		float posOffset = rect.w * percentage;
+		float markerWidth = 3.0f;
+		SRect markerRect = SRect(rect.x + posOffset - markerWidth / 2.0f, rect.y, markerWidth, rect.h);
+		CreateColourFromRGB(col, 0xFFFFFFFF);
+		pRenderer->DrawRectangle(pRenderer->CreateBrush(col), markerRect);
+	}
+
+	pRenderer->DrawTextString(text, rect);
+	rect.y -= rect.h;
+	pRenderer->DrawTextString(g_valueBuffer, rect);
 
 	return false;
+}
+
+void OnMouseCallback(int16 x, int16 y, bool rButton, bool mButton, bool lButton, int16 wheelDelta)
+{
+	g_xd = x - g_x;
+	g_yd = y - g_y;
+	g_x = x;
+	g_y = y;
+	g_rButton = rButton;
+	g_mButton = mButton;
+	g_lButton = lButton;
+	g_wheelDelta = wheelDelta;
+	Logger.Info(_T("%d, %d"), g_x, g_y);
 }
 
 void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
@@ -99,7 +161,7 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 		tree.m_interval = 3.14f / 7.0f;
 		tree.m_branchPow = 1.0f;
 		tree.m_maxTrunkDev = 3.14f / 8.0f;
-		tree.m_seed = 214 + i;
+		tree.m_seed = 214.0f + (float)i;
 		tree.m_maxBranchAngle = 0.0f;
 		tree.m_trunkScale = 0.1f;
 		tree.m_maxTrunkLen = 10.0f;
@@ -117,11 +179,13 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 			verts[j] = float2(treeVerts[j].x + (float)(width / 2), treeVerts[j].y + height);
 			treeVertices[i].push_back(verts[j]);
 		}
-		rhandle hOnePolyTree = uiRenderer->CreateFillGeometry(verts, polyVerts);
+		rhandle hOnePolyTree = uiRenderer->CreateFillGeometry(verts, (uint32)polyVerts);
 		delete verts;
 		trees[i] = hOnePolyTree;
 	}
 	rhandle hLeaf = uiRenderer->CreateEllipseGeometry(float2(), float2(2.0f, 2.0f));
+
+	window.RegisterMouseInput(OnMouseCallback);
 
 	float xpostest = -500.0f;
 	window.Show();
@@ -144,7 +208,7 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 			}
 		}
 
-		doSlider(uiRenderer, _T("x pos test"), SRect(100.0f, 100.0f, 100.0f, 25.0f), &xpostest, -1000.0f, 2000.0f);
+		doSlider(uiRenderer, _T("x pos test"), SRect(100.0f, 100.0f, 100.0f, 25.0f), &xpostest, -1000.0f, 1000.0f);
 
 		//uiRenderer->DrawFillGeometry(hOnePolyTree, hRectFillBrush);
 
