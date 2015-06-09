@@ -56,62 +56,97 @@ int16 g_y = 0;
 int16 g_xd = 0;
 int16 g_yd = 0;
 bool g_rButton;
+bool g_rButtonUp;
 bool g_mButton;
 bool g_lButton;
 int16 g_wheelDelta;
 
 tchar g_valueBuffer[255];
 
+const int numTrees = 1;
+rhandle* g_trees = new rhandle[numTrees];
+std::vector<int>* g_leafIndexes = new std::vector<int>[numTrees];
+std::vector<float2>* g_treeVertices = new std::vector<float2>[numTrees];
+
+float g_branchPow = 1.0f;
+float g_scale = 6.0f;
+float g_maxBranchAngle = 0.0f;
+float g_thickScale = 1.0f;
+bool  g_drawLeaves = true;
+float g_maxDepth = 8.0f;
+
+rhandle g_hLeaf = nullrhandle;
+
 bool doSlider( I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pValue, float valueMin, float valueMax)
 {
+	bool didSlide = false;
+	static bool wasRDown = false;
 	_stprintf_s<255>(g_valueBuffer, _T("%f"), (*pValue));
-	if (g_rButton && g_x > rect.x && g_x < rect.x+rect.w && g_y > rect.y && g_y < rect.y+rect.h )
+	float percentage = 0.0f;
+	float markerWidth = 2.0f;
+	if (g_rButton && (g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h || wasRDown))
 	{
-		SColour col;
-		CreateColourFromRGB(col, 0xCC0000FF);
-		pRenderer->DrawRectangle(pRenderer->CreateBrush(col), rect);
-		float percentage = (*pValue - valueMin) / (valueMax - valueMin);
-		float posOffset = rect.w * percentage;
-		float markerWidth = 3.0f;
-		SRect markerRect = SRect(g_x - markerWidth / 2.0f, rect.y, markerWidth, rect.h);
-		float posInSlider = g_x - rect.x - markerWidth / 2.0f;
-		percentage = posInSlider / rect.w;
+		float posInSlider = g_x - rect.x;
+		percentage = std::fmax(std::fmin(posInSlider / rect.w, 1.0f), 0.0f);
 		(*pValue) = percentage * (valueMax - valueMin) + valueMin;
-		CreateColourFromRGB(col, 0xFFFFFFFF);
-		pRenderer->DrawRectangle(pRenderer->CreateBrush(col), markerRect);
+		//wasRDown = true;
+		didSlide = true;
 	}
 	else if (g_wheelDelta != 0 && g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h)
 	{
-		(*pValue) += g_wheelDelta * 0.01f * ((valueMax - valueMin) + valueMin);
+		float range = valueMax - valueMin;
+		float add = g_wheelDelta * 0.01f * range;
+		(*pValue) += add;
+		(*pValue) = std::fmax(std::fmin((*pValue), valueMax), valueMin);
+
 		g_wheelDelta = 0; // nasty...
-		SColour col;
-		CreateColourFromRGB(col, 0xCC0000FF);
-		pRenderer->DrawRectangle(pRenderer->CreateBrush(col), rect);
-		float percentage = (*pValue - valueMin) / (valueMax - valueMin);
-		float posOffset = rect.w * percentage;
-		float markerWidth = 3.0f;
-		SRect markerRect = SRect(rect.x + posOffset - markerWidth / 2.0f, rect.y, markerWidth, rect.h);
-		CreateColourFromRGB(col, 0xFFFFFFFF);
-		pRenderer->DrawRectangle(pRenderer->CreateBrush(col), markerRect);
+		wasRDown = false;
+		didSlide = true;
 	}
 	else
-	{
-		SColour col;
-		CreateColourFromRGB(col, 0xCC0000FF);
-		pRenderer->DrawRectangle(pRenderer->CreateBrush(col), rect);
-		float percentage = (*pValue - valueMin) / (valueMax - valueMin);
-		float posOffset = rect.w * percentage;
-		float markerWidth = 3.0f;
-		SRect markerRect = SRect(rect.x + posOffset - markerWidth / 2.0f, rect.y, markerWidth, rect.h);
-		CreateColourFromRGB(col, 0xFFFFFFFF);
-		pRenderer->DrawRectangle(pRenderer->CreateBrush(col), markerRect);
-	}
+		wasRDown = false;
+
+	SColour col;
+	CreateColourFromRGB(col, 0x6073B2FF);
+	pRenderer->DrawRectangle(pRenderer->CreateBrush(col), rect);
+	percentage = (*pValue - valueMin) / (valueMax - valueMin);
+	float posOffset = rect.w * percentage;
+	SRect markerRect = SRect(rect.x + posOffset - markerWidth / 2.0f, rect.y, markerWidth, rect.h);
+	CreateColourFromRGB(col, 0x000000FF);
+	pRenderer->DrawRectangle(pRenderer->CreateBrush(col), markerRect);
 
 	pRenderer->DrawTextString(text, rect);
 	rect.y -= rect.h;
 	pRenderer->DrawTextString(g_valueBuffer, rect);
 
-	return false;
+	return didSlide;
+}
+
+bool doCheckBox(I2DRenderer* pRenderer, const tchar* text, SRect rect, bool* pValue)
+{
+	if (g_rButtonUp && g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h)
+	{
+		(*pValue) = !(*pValue);
+	}
+
+	SColour col;
+	CreateColourFromRGB(col, 0x6073B2FF);
+	SRect boxRect = rect;
+	boxRect.w = boxRect.w * 0.2f;
+	boxRect.x = rect.w / 2.0f + boxRect.w / 4.0f;
+	pRenderer->DrawRectangle(pRenderer->CreateBrush(col), boxRect);
+	if ((*pValue))
+	{ 
+		SRect markerRect = SRect(boxRect.x + boxRect.w*0.1f, boxRect.y + boxRect.w*0.1f, 
+								 boxRect.w - boxRect.w*0.2f, boxRect.h - boxRect.h*0.2f);
+		CreateColourFromRGB(col, 0x000000FF);
+		pRenderer->DrawRectangle(pRenderer->CreateBrush(col), markerRect);
+	}
+
+	rect.y -= rect.h;
+	pRenderer->DrawTextString(text, rect);
+
+	return (*pValue);
 }
 
 void OnMouseCallback(int16 x, int16 y, bool rButton, bool mButton, bool lButton, int16 wheelDelta)
@@ -120,11 +155,58 @@ void OnMouseCallback(int16 x, int16 y, bool rButton, bool mButton, bool lButton,
 	g_yd = y - g_y;
 	g_x = x;
 	g_y = y;
+	if (g_rButton && !rButton)
+		g_rButtonUp = true;
 	g_rButton = rButton;
 	g_mButton = mButton;
 	g_lButton = lButton;
 	g_wheelDelta = wheelDelta;
-	Logger.Info(_T("%d, %d"), g_x, g_y);
+	//Logger.Info(_T("%d, %d"), g_x, g_y);
+}
+
+void buildTrees(CWinWindow window, I2DRenderer* p2dRenderer)
+{
+	for (int i = 0; i < numTrees; ++i)
+	{
+		g_treeVertices[i].clear();
+		// TODO: more control
+		//		- reach of the branches
+		//      - random death/stunting
+		//      - overgrowth death/stunting
+		//		- noise
+		//	    - live editing (C# wrapper?)
+		CLSystemTree tree;
+		tree.m_maxTrunks = 1;
+		tree.m_scale = g_scale;
+		tree.m_maxDepth = (uint8)g_maxDepth;
+		tree.m_interval = 3.14f / 7.0f;
+		tree.m_branchPow = g_branchPow;
+		tree.m_maxTrunkDev = 3.14f / 8.0f;
+		tree.m_seed = 214.0f + (float)i;
+		tree.m_maxBranchAngle = g_maxBranchAngle;
+		tree.m_trunkScale = g_scale/6.0f*0.1f*g_thickScale;
+		tree.m_maxTrunkLen = 10.0f*g_scale/6.0f;
+		tree.Generate();
+		std::vector<float3> treeVerts;
+		tree.ConsumeVertexBuffer(treeVerts);
+		// uses move to get leaf data
+		tree.ConsumeAuxIndexBuffer(_T("leaves"), g_leafIndexes[i]);
+		std::size_t polyVerts = treeVerts.size();
+		float2* verts = new float2[polyVerts];
+		int32 width = window.Width();
+		int32 height = window.Height();
+		for (int j = 0; j < polyVerts; ++j)
+		{
+			verts[j] = float2(treeVerts[j].x + (float)(width / 2), treeVerts[j].y + height);
+			g_treeVertices[i].push_back(verts[j]);
+		}
+		// TODO: update don't recreate
+		rhandle hOnePolyTree = p2dRenderer->CreateFillGeometry(verts, (uint32)polyVerts);
+		delete verts;
+		g_trees[i] = hOnePolyTree;
+	}
+	// TODO: update scale don't recreate
+	g_hLeaf = p2dRenderer->CreateEllipseGeometry(float2(), float2(2.0f*g_scale/6.0f, 2.0f*g_scale/6.0f));
 }
 
 void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
@@ -137,57 +219,15 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 	CreateColourFromRGB(col, 0x49311cFF);
 	rhandle hRectFillBrush = uiRenderer->CreateBrush(col);
 	g_hBranchBrush = hRectFillBrush;
-	CreateColourFromRGB(leafCol, 0x00CC0022);
+	CreateColourFromRGB(leafCol, 0x006600AA);
 	hLeafBrush = uiRenderer->CreateBrush(leafCol);
 
 	int trunks = 0;
-
-	const int numTrees = 10;
-	rhandle* trees = new rhandle[numTrees];
-	std::vector<int>* leafIndexes = new std::vector<int>[numTrees];
-	std::vector<float2>* treeVertices = new std::vector<float2>[numTrees];
-	for (int i = 0; i < numTrees; ++i)
-	{
-		// TODO: more control
-		//		- reach of the branches
-		//      - random death/stunting
-		//      - overgrowth death/stunting
-		//		- noise
-		//	    - live editing (C# wrapper?)
-		CLSystemTree tree;
-		tree.m_maxTrunks = 1;
-		tree.m_scale = 6.0f;
-		tree.m_maxDepth = 8;
-		tree.m_interval = 3.14f / 7.0f;
-		tree.m_branchPow = 1.0f;
-		tree.m_maxTrunkDev = 3.14f / 8.0f;
-		tree.m_seed = 214.0f + (float)i;
-		tree.m_maxBranchAngle = 0.0f;
-		tree.m_trunkScale = 0.1f;
-		tree.m_maxTrunkLen = 10.0f;
-		tree.Generate();
-		std::vector<float3> treeVerts;
-		tree.ConsumeVertexBuffer(treeVerts);
-		// uses move to get leaf data
-		tree.ConsumeAuxIndexBuffer(_T("leaves"), leafIndexes[i]);
-		std::size_t polyVerts = treeVerts.size();
-		float2* verts = new float2[polyVerts];
-		int32 width = window.Width();
-		int32 height = window.Height();
-		for (int j = 0; j < polyVerts; ++j)
-		{
-			verts[j] = float2(treeVerts[j].x + (float)(width / 2), treeVerts[j].y + height);
-			treeVertices[i].push_back(verts[j]);
-		}
-		rhandle hOnePolyTree = uiRenderer->CreateFillGeometry(verts, (uint32)polyVerts);
-		delete verts;
-		trees[i] = hOnePolyTree;
-	}
-	rhandle hLeaf = uiRenderer->CreateEllipseGeometry(float2(), float2(2.0f, 2.0f));
+	buildTrees(window, uiRenderer);
 
 	window.RegisterMouseInput(OnMouseCallback);
 
-	float xpostest = -500.0f;
+	float xpostest = 0.0f;
 	window.Show();
 	while (!window.ShouldQuit())
 	{
@@ -199,16 +239,34 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 		for (int i = 0; i < numTrees; ++i)
 		{
 			float2 treePos = float2(xpostest + ((float)i*100.0f), 0.0f);
-			uiRenderer->DrawFillGeometry(trees[i], hRectFillBrush, treePos);
+			uiRenderer->DrawFillGeometry(g_trees[i], hRectFillBrush, treePos);
 
-			for (auto leafIter = leafIndexes[i].begin(); leafIter != leafIndexes[i].end(); ++leafIter)
+			if (g_drawLeaves)
 			{
-				float2 pos = treeVertices[i][(*leafIter)];
-				uiRenderer->DrawFillGeometry(hLeaf, hLeafBrush, float2(pos.x + treePos.x, pos.y + treePos.y));
+				for (auto leafIter = g_leafIndexes[i].begin(); leafIter != g_leafIndexes[i].end(); ++leafIter)
+				{
+					float2 pos = g_treeVertices[i][(*leafIter)];
+					uiRenderer->DrawFillGeometry(g_hLeaf, hLeafBrush, float2(pos.x + treePos.x, pos.y + treePos.y));
+				}
 			}
 		}
 
-		doSlider(uiRenderer, _T("x pos test"), SRect(100.0f, 100.0f, 100.0f, 25.0f), &xpostest, -1000.0f, 1000.0f);
+		bool paramChanged = false;
+		if (doSlider(uiRenderer, _T("branch pow"), SRect(20.0f, 20.0f, 100.0f, 20.0f), &g_branchPow, 1.0f, 30.0f))
+			paramChanged = true;
+		if (doSlider(uiRenderer, _T("scale"), SRect(20.0f, 65.0f, 100.0f, 20.0f), &g_scale, 1.0f, 100.0f))
+			paramChanged = true;
+		if (doSlider(uiRenderer, _T("max angle"), SRect(20.0f, 110.0f, 100.0f, 20.0f), &g_maxBranchAngle, -M_PI*2.0f, M_PI*2.0f))
+			paramChanged = true;
+		if (doSlider(uiRenderer, _T("thick scale"), SRect(20.0f, 155.0f, 100.0f, 20.0f), &g_thickScale, 1.0f, 10.0f))
+			paramChanged = true;
+		doCheckBox(uiRenderer, _T("draw leaves"), SRect(20.0f, 200.0f, 100.0f, 20.0f), &g_drawLeaves);
+		if (doSlider(uiRenderer, _T("max depth"), SRect(20.0f, 245.0f, 100.0f, 20.0f), &g_maxDepth, 1.0f, 20.0f))
+			paramChanged = true;
+		if (paramChanged)
+		{
+			buildTrees(window, uiRenderer);
+		}
 
 		//uiRenderer->DrawFillGeometry(hOnePolyTree, hRectFillBrush);
 
@@ -219,6 +277,7 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 		//}
 
 		uiRenderer->EndDraw();
+		g_rButtonUp = false; // kinda nasty...
 	}
 }
 
