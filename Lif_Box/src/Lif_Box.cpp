@@ -168,7 +168,6 @@ void buildTrees(CWinWindow window, I2DRenderer* p2dRenderer)
 {
 	for (int i = 0; i < numTrees; ++i)
 	{
-		g_treeVertices[i].clear();
 		// TODO: more control
 		//		- reach of the branches
 		//      - random death/stunting
@@ -192,13 +191,14 @@ void buildTrees(CWinWindow window, I2DRenderer* p2dRenderer)
 		// uses move to get leaf data
 		tree.ConsumeAuxIndexBuffer(_T("leaves"), g_leafIndexes[i]);
 		std::size_t polyVerts = treeVerts.size();
+		g_treeVertices[i].resize(polyVerts);
 		float2* verts = new float2[polyVerts];
 		int32 width = window.Width();
 		int32 height = window.Height();
 		for (int j = 0; j < polyVerts; ++j)
 		{
 			verts[j] = float2(treeVerts[j].x + (float)(width / 2), treeVerts[j].y + height);
-			g_treeVertices[i].push_back(verts[j]);
+			g_treeVertices[i][j] = verts[j];
 		}
 		// TODO: update don't recreate
 		rhandle hOnePolyTree = p2dRenderer->CreateFillGeometry(verts, (uint32)polyVerts);

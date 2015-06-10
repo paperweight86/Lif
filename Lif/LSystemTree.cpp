@@ -85,7 +85,7 @@ void CLSystemTree::CalcBranchStartPoints( const float2& startPoint, const float2
 bool CLSystemTree::TestIntersection(float2 lineA1, float2 lineA2, float2 lineB1, float2 lineB2, float2& result)
 {
 	float divisor = (lineA1.x - lineA2.x) * (lineB1.y - lineB2.y) - (lineA1.y - lineA2.y) * (lineB1.x - lineB2.x);
-	if (fabs(divisor) < float_epsilon)
+	if (fabs(divisor) <= float_epsilon)
 	{
 		return false;
 	}
@@ -111,10 +111,12 @@ void CLSystemTree::Branch(const SBranch& last, float angle, int& depth)
 	float fdepth = (float)(depth + 1);
 	fdepth = (float)(m_maxDepth + 1) - fdepth;
 	float thickPow = 1.0f;
-	float thickness = std::max<float>(1.0f, powf(fdepth, thickPow) * m_trunkScale);
+	float thickness = std::max<float>(1.0f, powf(std::max(fdepth, 1.0f), thickPow) * m_trunkScale);
 	if (depth == 0)
 		thickPow = 1.0f;
 	float lastThickness = std::max<float>(1.0f, powf(std::max(fdepth, 1.0f), thickPow) * m_trunkScale);
+
+	assert(thickness >= lastThickness);
 
 	float angleRight = (float)(rand() % 360) / 360.0f * m_interval * 2.0f;
 	float angleLeft = (float)(rand() % 360) / 360.0f * m_interval * 2.0f;
@@ -130,10 +132,10 @@ void CLSystemTree::Branch(const SBranch& last, float angle, int& depth)
 	rightBranch.v1 = leftBranch.v1 = last.v2;
 	rightBranch.startThickness = leftBranch.startThickness = last.endThickness;
 	rightBranch.endThickness = leftBranch.endThickness = thickness;
-	leftBranch.end = float2(leftBranch.start.x + cosf(angle + angleLeft)*(m_scale*lScale),
-		leftBranch.start.y - sinf(angle + angleLeft)*(m_scale*lScale));
-	rightBranch.end = float2(rightBranch.start.x + cosf(angle - angleRight)*(m_scale*rScale),
-		rightBranch.start.y - sinf(angle - angleRight)*(m_scale*rScale));
+	leftBranch.end = float2( leftBranch.start.x  + cosf(angle + angleLeft) *(m_scale),
+						     leftBranch.start.y  - sinf(angle + angleLeft) *(m_scale));
+	rightBranch.end = float2(rightBranch.start.x + cosf(angle - angleRight)*(m_scale),
+						     rightBranch.start.y - sinf(angle - angleRight)*(m_scale));
 	CalcBranchEndPoints(  leftBranch.start,  leftBranch.end,  leftBranch.v3,  leftBranch.v2, thickness );
 	CalcBranchEndPoints( rightBranch.start, rightBranch.end, rightBranch.v3, rightBranch.v2, thickness );
 
