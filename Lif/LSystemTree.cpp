@@ -84,15 +84,20 @@ void CLSystemTree::CalcBranchStartPoints( const float2& startPoint, const float2
 
 bool CLSystemTree::TestIntersection(float2 lineA1, float2 lineA2, float2 lineB1, float2 lineB2, float2& result)
 {
-	float divisor = (lineA1.x - lineA2.x) * (lineB1.y - lineB2.y) - (lineA1.y - lineA2.y) * (lineB1.x - lineB2.x);
+	float divisor = (lineA1.x - lineA2.x) * (lineB1.y - lineB2.y) 
+				  - (lineA1.y - lineA2.y) * (lineB1.x - lineB2.x);
 	if (fabs(divisor) <= float_epsilon)
 	{
 		return false;
 	}
 	else
 	{
-		float x = (lineA1.x * lineA2.y - lineA1.y * lineA2.x) * (lineB1.x - lineB2.x) - (lineA1.x - lineA2.x) * (lineB1.x * lineB2.y - lineB1.y * lineB2.x);
-		float y = (lineA1.x * lineA2.y - lineA1.y * lineA2.x) * (lineB1.y - lineB2.y) - (lineA1.y - lineA2.y) * (lineB1.x * lineB2.y - lineB1.y * lineB2.x);
+		float x = (lineA1.x * lineA2.y - lineA1.y * lineA2.x) 
+				* (lineB1.x - lineB2.x) - (lineA1.x - lineA2.x) 
+				* (lineB1.x * lineB2.y - lineB1.y * lineB2.x);
+		float y = (lineA1.x * lineA2.y - lineA1.y * lineA2.x) 
+			    * (lineB1.y - lineB2.y) - (lineA1.y - lineA2.y) 
+				* (lineB1.x * lineB2.y - lineB1.y * lineB2.x);
 		result = float2(x / divisor, y / divisor);
 		return true;
 	}
@@ -132,10 +137,10 @@ void CLSystemTree::Branch(const SBranch& last, float angle, int& depth)
 	rightBranch.v1 = leftBranch.v1 = last.v2;
 	rightBranch.startThickness = leftBranch.startThickness = last.endThickness;
 	rightBranch.endThickness = leftBranch.endThickness = thickness;
-	leftBranch.end = float2( leftBranch.start.x  + cosf(angle + angleLeft) *(m_scale),
-						     leftBranch.start.y  - sinf(angle + angleLeft) *(m_scale));
-	rightBranch.end = float2(rightBranch.start.x + cosf(angle - angleRight)*(m_scale),
-						     rightBranch.start.y - sinf(angle - angleRight)*(m_scale));
+	leftBranch.end = float2( leftBranch.start.x  + cosf(angle + angleLeft) *(m_scale*lScale),
+						     leftBranch.start.y  - sinf(angle + angleLeft) *(m_scale*lScale));
+	rightBranch.end = float2(rightBranch.start.x + cosf(angle - angleRight)*(m_scale*rScale),
+						     rightBranch.start.y - sinf(angle - angleRight)*(m_scale*rScale));
 	CalcBranchEndPoints(  leftBranch.start,  leftBranch.end,  leftBranch.v3,  leftBranch.v2, thickness );
 	CalcBranchEndPoints( rightBranch.start, rightBranch.end, rightBranch.v3, rightBranch.v2, thickness );
 

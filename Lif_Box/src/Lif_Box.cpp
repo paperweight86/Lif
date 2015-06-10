@@ -201,6 +201,8 @@ void buildTrees(CWinWindow window, I2DRenderer* p2dRenderer)
 			g_treeVertices[i][j] = verts[j];
 		}
 		// TODO: update don't recreate
+		if (g_trees[i] != nullrhandle)
+			p2dRenderer->DestroyResource(g_trees[i]);
 		rhandle hOnePolyTree = p2dRenderer->CreateFillGeometry(verts, (uint32)polyVerts);
 		delete verts;
 		g_trees[i] = hOnePolyTree;
@@ -309,6 +311,8 @@ int lif_main()
 
 int _tmain(int argc, _TCHAR* argv[])
 {
+	for (int i = 0; i < numTrees; ++i)
+		g_trees[i] = nullrhandle;
 	int result = lif_main();
 
 	return result;
