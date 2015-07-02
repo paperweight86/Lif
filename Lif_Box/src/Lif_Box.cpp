@@ -98,8 +98,6 @@ bool doSlider( I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pVa
 		float add = g_wheelDelta * 0.01f * range;
 		(*pValue) += add;
 		(*pValue) = std::fmax(std::fmin((*pValue), valueMax), valueMin);
-
-		g_wheelDelta = 0; // nasty...
 		wasRDown = false;
 		didSlide = true;
 	}
@@ -200,7 +198,7 @@ void buildTrees(CWinWindow window, I2DRenderer* p2dRenderer)
 			verts[j] = float2(treeVerts[j].x + (float)(width / 2), treeVerts[j].y + height);
 			g_treeVertices[i][j] = verts[j];
 		}
-		// TODO: update don't recreate
+		// TODO: update don't recreate?
 		if (g_trees[i] != nullrhandle)
 			p2dRenderer->DestroyResource(g_trees[i]);
 		rhandle hOnePolyTree = p2dRenderer->CreateFillGeometry(verts, (uint32)polyVerts);
@@ -208,8 +206,10 @@ void buildTrees(CWinWindow window, I2DRenderer* p2dRenderer)
 		g_trees[i] = hOnePolyTree;
 	}
 	// TODO: update scale don't recreate
+	p2dRenderer->DestroyResource(g_hLeaf);
 	g_hLeaf = p2dRenderer->CreateEllipseGeometry(float2(), float2(2.0f*g_scale/6.0f, 2.0f*g_scale/6.0f));
 }
+
 
 void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 {
@@ -254,13 +254,13 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 		}
 
 		bool paramChanged = false;
-		if (doSlider(uiRenderer, _T("branch pow"), SRect(20.0f, 20.0f, 100.0f, 20.0f), &g_branchPow, 1.0f, 30.0f))
+		if (doSlider(uiRenderer, _T("branch pow"), SRect(20.0f, 20.0f, 100.0f, 20.0f), &g_branchPow, 0.1f, 30.0f))
 			paramChanged = true;
-		if (doSlider(uiRenderer, _T("scale"), SRect(20.0f, 65.0f, 100.0f, 20.0f), &g_scale, 1.0f, 100.0f))
+		if (doSlider(uiRenderer, _T("scale"), SRect(20.0f, 65.0f, 100.0f, 20.0f), &g_scale, 0.1f, 100.0f))
 			paramChanged = true;
 		if (doSlider(uiRenderer, _T("max angle"), SRect(20.0f, 110.0f, 100.0f, 20.0f), &g_maxBranchAngle, -M_PI*2.0f, M_PI*2.0f))
 			paramChanged = true;
-		if (doSlider(uiRenderer, _T("thick scale"), SRect(20.0f, 155.0f, 100.0f, 20.0f), &g_thickScale, 1.0f, 10.0f))
+		if (doSlider(uiRenderer, _T("thick scale"), SRect(20.0f, 155.0f, 100.0f, 20.0f), &g_thickScale, 0.1f, 10.0f))
 			paramChanged = true;
 		doCheckBox(uiRenderer, _T("draw leaves"), SRect(20.0f, 200.0f, 100.0f, 20.0f), &g_drawLeaves);
 		if (doSlider(uiRenderer, _T("max depth"), SRect(20.0f, 245.0f, 100.0f, 20.0f), &g_maxDepth, 1.0f, 20.0f))
@@ -280,7 +280,18 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 
 		uiRenderer->EndDraw();
 		g_rButtonUp = false; // kinda nasty...
+		g_wheelDelta = 0;
 	}
+
+	// Free trees etc.
+	for (int i = 0; i < numTrees; ++i)
+	{
+		uiRenderer->DestroyResource(g_trees[i]);
+		g_trees[i] = nullrhandle;
+	}
+	uiRenderer->DestroyResource(g_hLeaf);
+	uiRenderer->DestroyResource(g_hBranchBrush);
+	uiRenderer->DestroyResource(hLeafBrush);
 }
 
 int lif_main()
@@ -305,6 +316,8 @@ int lif_main()
 	}
 
 	doTree(window, uiRenderer);
+
+	delete uiRenderer;
 
 	return 0;
 }
