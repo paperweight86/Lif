@@ -328,6 +328,10 @@ int _tmain(int argc, _TCHAR* argv[])
 		g_trees[i] = nullrhandle;
 	int result = lif_main();
 
+#ifndef NDEBUG
+	system("PAUSE");
+#endif
+
 	return result;
 }
 
