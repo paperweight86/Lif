@@ -77,6 +77,11 @@ float g_maxDepth = 8.0f;
 
 rhandle g_hLeaf = nullrhandle;
 
+rhandle g_winrt;
+rhandle g_itemrt;
+
+rhandle g_hTextBrush;
+
 bool doSlider( I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pValue, float valueMin, float valueMax)
 {
 	bool didSlide = false;
@@ -113,9 +118,9 @@ bool doSlider( I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pVa
 	CreateColourFromRGB(col, 0x000000FF);
 	pRenderer->DrawRectangle(pRenderer->CreateBrush(col), markerRect);
 
-	pRenderer->DrawTextString(text, rect);
+	pRenderer->DrawTextString(text, rect, g_hTextBrush);
 	rect.y -= rect.h;
-	pRenderer->DrawTextString(g_valueBuffer, rect);
+	pRenderer->DrawTextString(g_valueBuffer, rect, g_hTextBrush);
 
 	return didSlide;
 }
@@ -142,7 +147,7 @@ bool doCheckBox(I2DRenderer* pRenderer, const tchar* text, SRect rect, bool* pVa
 	}
 
 	rect.y -= rect.h;
-	pRenderer->DrawTextString(text, rect);
+	pRenderer->DrawTextString(text, rect, g_hTextBrush);
 
 	return (*pValue);
 }
@@ -213,6 +218,8 @@ void buildTrees(CWinWindow window, I2DRenderer* p2dRenderer)
 
 void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 {
+	uiRenderer->SetRenderTarget(g_itemrt);
+
 	SColour col, leafCol;
 	CreateColourFromRGB(col, 0x008800FF);
 	//SRect rect(50.0f, 50.0f, 50.0f, 50.0f);
@@ -223,6 +230,10 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 	g_hBranchBrush = hRectFillBrush;
 	CreateColourFromRGB(leafCol, 0x006600AA);
 	hLeafBrush = uiRenderer->CreateBrush(leafCol);
+
+	SColour text;
+	CreateColourFromRGB(text, 0x000000FF);
+	g_hTextBrush = uiRenderer->CreateBrush(text);
 
 	int trunks = 0;
 	buildTrees(window, uiRenderer);
@@ -279,6 +290,15 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 		//}
 
 		uiRenderer->EndDraw();
+
+		uiRenderer->SetRenderTarget(g_winrt);
+		rhandle rtImg = uiRenderer->CreateImageFromRenderTarget(g_itemrt);
+		uiRenderer->BeginDraw();
+		uiRenderer->DrawBitmap(rtImg, float2(), float2(1.0, 1.0));
+		uiRenderer->EndDraw();
+
+		uiRenderer->SetRenderTarget(g_itemrt);
+
 		g_rButtonUp = false; // kinda nasty...
 		g_wheelDelta = 0;
 	}
@@ -314,6 +334,22 @@ int lif_main()
 		Logger.Error(_T("Fatal: Failed to initialise UI renderer"));
 		return -1;
 	}
+
+	g_winrt = uiRenderer->CreateRenderTarget(/*present:*/true);//RenderTargetType_Window);
+	g_itemrt = uiRenderer->CreateRenderTarget(/*present:*/false);//RenderTargetType_Texture);
+
+	/*
+	guiRenderer->SetRenderTarget(winrt);
+	// create resources...
+	guiRenderer->SetRenderTarget(itemrt);
+	// create resources...
+	// loop
+	// generate item
+	// render item
+	guiRenderer->SetRenderTarget(winrt);
+	// render ui
+	guiRenderer->SetRenderTarget(itemrt);
+	*/
 
 	doTree(window, uiRenderer);
 
