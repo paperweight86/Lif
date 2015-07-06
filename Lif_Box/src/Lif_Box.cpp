@@ -81,6 +81,36 @@ rhandle g_winrt;
 rhandle g_itemrt;
 
 rhandle g_hTextBrush;
+rhandle g_hWhiteTextBrush;
+
+bool doButton(I2DRenderer* pRenderer, const tchar* text, SRect rect)
+{
+	bool isDown = g_rButtonUp && (g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h);
+	SColour col;
+	// Border
+	CreateColourFromRGB(col, 0x000000FF);
+	SRect borderRect = rect;
+	borderRect.x -= 1.0f;
+	borderRect.y -= 1.0f;
+	borderRect.w += 2.0f;
+	borderRect.h += 2.0f;
+	pRenderer->DrawRectangle(pRenderer->CreateBrush(col), borderRect);
+	// Background
+	rhandle textBrush = g_hTextBrush;
+	if (!g_rButton)
+	{
+		CreateColourFromRGB(col, 0x6073B2FF);
+	}
+	else if (g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h)
+	{
+		textBrush = g_hWhiteTextBrush;
+	}
+	pRenderer->DrawRectangle(pRenderer->CreateBrush(col), rect);
+
+	pRenderer->DrawTextString(text, rect, textBrush);
+
+	return isDown;
+}
 
 bool doSlider( I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pValue, float valueMin, float valueMax)
 {
@@ -215,7 +245,6 @@ void buildTrees(CWinWindow window, I2DRenderer* p2dRenderer)
 	g_hLeaf = p2dRenderer->CreateEllipseGeometry(float2(), float2(2.0f*g_scale/6.0f, 2.0f*g_scale/6.0f));
 }
 
-
 void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 {
 	uiRenderer->SetRenderTarget(g_itemrt);
@@ -231,14 +260,22 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 	CreateColourFromRGB(leafCol, 0x006600AA);
 	hLeafBrush = uiRenderer->CreateBrush(leafCol);
 
-	SColour text;
+	SColour text, whiteText;
 	CreateColourFromRGB(text, 0x000000FF);
 	g_hTextBrush = uiRenderer->CreateBrush(text);
+	CreateColourFromRGB(whiteText, 0xFFFFFFFF);
+	g_hWhiteTextBrush = uiRenderer->CreateBrush(whiteText);
 
 	int trunks = 0;
 	buildTrees(window, uiRenderer);
 
 	window.RegisterMouseInput(OnMouseCallback);
+
+	SColour white;
+	CreateColourFromRGB(white, 0xFFFFFFFF);
+
+	SColour transparent;
+	CreateColourFromRGB(transparent, 0x00000000);
 
 	float xpostest = 0.0f;
 	window.Show();
@@ -246,6 +283,7 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 	{
 		window.Update();
 
+		uiRenderer->SetClearColor(transparent);
 		uiRenderer->BeginDraw();
 
 		// TODO: now optimise for overdraw
@@ -280,6 +318,7 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 		{
 			buildTrees(window, uiRenderer);
 		}
+		bool savePng = doButton(uiRenderer, _T("save"), SRect(20.0f, 290.0f, 100, 20.0f));
 
 		//uiRenderer->DrawFillGeometry(hOnePolyTree, hRectFillBrush);
 
@@ -293,6 +332,9 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 
 		uiRenderer->SetRenderTarget(g_winrt);
 		rhandle rtImg = uiRenderer->CreateImageFromRenderTarget(g_itemrt);
+		if (savePng)
+			uiRenderer->SavePngImage(g_itemrt);
+		uiRenderer->SetClearColor(white);
 		uiRenderer->BeginDraw();
 		uiRenderer->DrawBitmap(rtImg, float2(), float2(1.0, 1.0));
 		uiRenderer->EndDraw();
