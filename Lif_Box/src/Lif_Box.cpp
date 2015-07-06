@@ -88,7 +88,7 @@ bool doButton(I2DRenderer* pRenderer, const tchar* text, SRect rect)
 	bool isDown = g_rButtonUp && (g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h);
 	SColour col;
 	// Border
-	CreateColourFromRGB(col, 0x000000FF);
+	CreateColourFromRGB(col, 0x6073B2FF);
 	SRect borderRect = rect;
 	borderRect.x -= 1.0f;
 	borderRect.y -= 1.0f;
@@ -97,12 +97,9 @@ bool doButton(I2DRenderer* pRenderer, const tchar* text, SRect rect)
 	pRenderer->DrawRectangle(pRenderer->CreateBrush(col), borderRect);
 	// Background
 	rhandle textBrush = g_hTextBrush;
-	if (!g_rButton)
+	if (g_rButton && (g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h))
 	{
-		CreateColourFromRGB(col, 0x6073B2FF);
-	}
-	else if (g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h)
-	{
+		CreateColourFromRGB(col, 0x000000FF);
 		textBrush = g_hWhiteTextBrush;
 	}
 	pRenderer->DrawRectangle(pRenderer->CreateBrush(col), rect);
@@ -333,7 +330,10 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 		uiRenderer->SetRenderTarget(g_winrt);
 		rhandle rtImg = uiRenderer->CreateImageFromRenderTarget(g_itemrt);
 		if (savePng)
+		{
 			uiRenderer->SavePngImage(g_itemrt);
+			Logger.Info(_T("Saved image to C:\\Output.png"));
+		}
 		uiRenderer->SetClearColor(white);
 		uiRenderer->BeginDraw();
 		uiRenderer->DrawBitmap(rtImg, float2(), float2(1.0, 1.0));
