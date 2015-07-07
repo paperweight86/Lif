@@ -245,7 +245,6 @@ void buildTrees(CWinWindow window, I2DRenderer* p2dRenderer)
 void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 {
 	uiRenderer->SetRenderTarget(g_itemrt);
-
 	SColour col, leafCol;
 	CreateColourFromRGB(col, 0x008800FF);
 	//SRect rect(50.0f, 50.0f, 50.0f, 50.0f);
@@ -257,6 +256,7 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 	CreateColourFromRGB(leafCol, 0x006600AA);
 	hLeafBrush = uiRenderer->CreateBrush(leafCol);
 
+	uiRenderer->SetRenderTarget(g_winrt);
 	SColour text, whiteText;
 	CreateColourFromRGB(text, 0x000000FF);
 	g_hTextBrush = uiRenderer->CreateBrush(text);
@@ -273,6 +273,8 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 
 	SColour transparent;
 	CreateColourFromRGB(transparent, 0x00000000);
+
+	uiRenderer->SetRenderTarget(g_itemrt);
 
 	float xpostest = 0.0f;
 	window.Show();
@@ -299,6 +301,21 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 			}
 		}
 
+		//uiRenderer->DrawFillGeometry(hOnePolyTree, hRectFillBrush);
+
+		//for (auto leafIter = treeLeaves.begin(); leafIter != treeLeaves.end(); ++leafIter)
+		//{
+		//	float2 pos = verts[(*leafIter)];
+		//	uiRenderer->DrawFillGeometry(hLeaf, hLeafBrush, pos);
+		//}
+
+		uiRenderer->EndDraw();
+
+		uiRenderer->SetRenderTarget(g_winrt);
+		rhandle rtImg = uiRenderer->CreateImageFromRenderTarget(g_itemrt);
+		uiRenderer->SetClearColor(white);
+		uiRenderer->BeginDraw();
+		uiRenderer->DrawBitmap(rtImg, float2(), float2(1.0, 1.0));
 		bool paramChanged = false;
 		if (doSlider(uiRenderer, _T("branch pow"), SRect(20.0f, 20.0f, 100.0f, 20.0f), &g_branchPow, 0.1f, 30.0f))
 			paramChanged = true;
@@ -316,27 +333,11 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 			buildTrees(window, uiRenderer);
 		}
 		bool savePng = doButton(uiRenderer, _T("save"), SRect(20.0f, 290.0f, 100, 20.0f));
-
-		//uiRenderer->DrawFillGeometry(hOnePolyTree, hRectFillBrush);
-
-		//for (auto leafIter = treeLeaves.begin(); leafIter != treeLeaves.end(); ++leafIter)
-		//{
-		//	float2 pos = verts[(*leafIter)];
-		//	uiRenderer->DrawFillGeometry(hLeaf, hLeafBrush, pos);
-		//}
-
-		uiRenderer->EndDraw();
-
-		uiRenderer->SetRenderTarget(g_winrt);
-		rhandle rtImg = uiRenderer->CreateImageFromRenderTarget(g_itemrt);
 		if (savePng)
 		{
 			uiRenderer->SavePngImage(g_itemrt);
 			Logger.Info(_T("Saved image to C:\\Output.png"));
 		}
-		uiRenderer->SetClearColor(white);
-		uiRenderer->BeginDraw();
-		uiRenderer->DrawBitmap(rtImg, float2(), float2(1.0, 1.0));
 		uiRenderer->EndDraw();
 
 		uiRenderer->SetRenderTarget(g_itemrt);
