@@ -200,24 +200,23 @@ void OnMouseCallback(int16 x, int16 y, bool rButton, bool mButton, bool lButton,
 	//Logger.Info(_T("%d, %d"), g_x, g_y);
 }
 
-void buildTerrain(int width, int height, I2DRenderer* pRenderer)
+void buildTerrain(int y, float xOffset, float yOffset, int width, int height, I2DRenderer* pRenderer)
 {
-	g_pTerrainVerts = new float2[width + 2];
 	float xPos = 0.0f;
 	int x = 0;
-	g_pTerrainVerts[x] = float2(xPos, (float)height);
+	g_pTerrainVerts[x] = float2(xPos, (float)height*4.0f);
 	x++;
 	for (; x < width+1; ++x)
 	{
 		xPos = (float)x;
-		float x_ = (float)((((float)x + 1) - ((x + 1) / width * width)) / ((float)width) + rand()) * 24.0f;
-		float y_ = (float)((((float)1 + 1) / width) / ((float)height) + rand()) * 24.0f;
-		float yPos = (float)height - 200.0f - (Perlin::Get2DNoise((float)x / 100.0f, 0.0f, 0.15f, 4)) * (float)height;
+		float x_ = (float)((((float)x + 1) - ((x + 1) / width * width)) / ((float)width) ) * 15.0f;
+		float y_ = (float)((((float)y + 1) / width) / ((float)height)) * 15.0f;
+		float yPos = (float)height - yOffset - (Perlin::Get2DNoise(x_ + xOffset, (float)y, 0.25f, 8)) * (float)height;
 		//float yPos = (float)height - (Perlin::Get2DNoise(xPos, 100.0f, 0.5f, 8)) * (float)height;
 
 		g_pTerrainVerts[x] = float2(xPos, yPos);
 	}
-	g_pTerrainVerts[x] = float2(xPos, (float)height);
+	g_pTerrainVerts[x] = float2(xPos, (float)height*4.0f);
 	g_hTerrain = pRenderer->CreateFillGeometry(g_pTerrainVerts, (uint32)width+2);
 }
 
@@ -282,7 +281,8 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 	g_hBranchBrush = hRectFillBrush;
 	CreateColourFromRGB(leafCol, 0x006600AA);
 	hLeafBrush = uiRenderer->CreateBrush(leafCol);
-	buildTerrain(window.Width(), window.Height(), uiRenderer);
+	g_pTerrainVerts = new float2[window.Width() + 2];
+	buildTerrain(0, 0.0f, 100.0f, window.Width(), window.Height()/2, uiRenderer);
 	uiRenderer->SetRenderTarget(g_winrt);
 	SColour text, whiteText;
 	CreateColourFromRGB(text, 0x000000FF);
@@ -304,13 +304,24 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 	buildTrees(window, uiRenderer);
 
 	float xpostest = 0.0f;
+	float ypostest = 0.0f;
 	window.Show();
+	float xOffset = 0;
 	while (!window.ShouldQuit())
 	{
+		xOffset += 0.01f;
+		//ypostest += 0.1f;
 		window.Update();
 
 		uiRenderer->SetClearColor(transparent);
 		uiRenderer->BeginDraw();
+
+		buildTerrain(-1000 + (int)ypostest, xOffset, 25.0f, window.Width(), window.Height() / 4, uiRenderer);
+		uiRenderer->DrawFillGeometry(g_hTerrain, hLeafBrush);
+		buildTerrain(0 + (int)ypostest, xOffset, 25.0f, window.Width(), window.Height() / 2, uiRenderer);
+		uiRenderer->DrawFillGeometry(g_hTerrain, hLeafBrush);
+		buildTerrain(1000 + (int)ypostest, xOffset, 100.0f, window.Width(), window.Height(), uiRenderer);
+		uiRenderer->DrawFillGeometry(g_hTerrain, hLeafBrush);
 
 		// TODO: now optimise for overdraw
 		for (int i = 0; i < numTrees; ++i)
@@ -328,7 +339,6 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 			}
 		}
 
-		uiRenderer->DrawFillGeometry(g_hTerrain, hLeafBrush);
 		//for (int i = 0; i < 20; ++i)
 		//	uiRenderer->DrawFillGeometry(g_hLeaf, hLeafBrush, g_pTerrainVerts[i]);
 
