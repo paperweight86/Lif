@@ -80,14 +80,36 @@ float g_maxDepth = 8.0f;
 
 rhandle g_hLeaf = nullrhandle;
 
-rhandle g_winrt;
-rhandle g_itemrt;
+rhandle g_winrt = nullrhandle;
+rhandle g_itemrt = nullrhandle;
 
-rhandle g_hTextBrush;
-rhandle g_hWhiteTextBrush;
+rhandle g_hTextBrush = nullrhandle;
+rhandle g_hWhiteTextBrush = nullrhandle;
 
-rhandle g_hTerrain;
+rhandle g_hTerrain = nullrhandle;
 float2* g_pTerrainVerts;
+rhandle g_hTerrainBrushFar = nullrhandle;
+rhandle g_hTerrainBrushMid = nullrhandle;
+rhandle g_hTerrainBrushNear = nullrhandle;
+
+float g_nearYOffset;
+float g_farYOffset;
+float g_midYOffset;
+
+float g_persistance;
+float g_octaves;
+
+float g_nearHeightScale;
+float g_midHeightScale;
+float g_farHeightScale;
+
+float g_nearHeightOffset;
+float g_midHeightOffset;
+float g_farHeightOffset;
+
+rhandle g_nearTerrain = nullrhandle;
+rhandle g_midTerrain  = nullrhandle;
+rhandle g_farTerrain  = nullrhandle;
 
 bool doButton(I2DRenderer* pRenderer, const tchar* text, SRect rect)
 {
@@ -115,11 +137,46 @@ bool doButton(I2DRenderer* pRenderer, const tchar* text, SRect rect)
 	return isDown;
 }
 
-bool doSlider( I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pValue, float valueMin, float valueMax)
+bool doToggleButton(I2DRenderer* pRenderer, const tchar* text, SRect rect, bool* toggle )
+{
+	bool isDown = g_rButtonUp && (g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h);
+	SColour col;
+	// Border
+	CreateColourFromRGB(col, 0x6073B2FF);
+	SRect borderRect = rect;
+	borderRect.x -= 1.0f;
+	borderRect.y -= 1.0f;
+	borderRect.w += 2.0f;
+	borderRect.h += 2.0f;
+	pRenderer->DrawRectangle(pRenderer->CreateBrush(col), borderRect);
+	// Background
+	rhandle textBrush = g_hTextBrush;
+	if (isDown)
+	{
+		(*toggle) = !(*toggle);
+	}
+
+	if (*toggle)
+	{
+		CreateColourFromRGB(col, 0x000000FF);
+		textBrush = g_hWhiteTextBrush;
+	}
+
+	pRenderer->DrawRectangle(pRenderer->CreateBrush(col), rect);
+
+	pRenderer->DrawTextString(text, rect, textBrush);
+
+	return isDown;
+}
+
+bool doSlider( I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pValue, float valueMin, float valueMax, bool bRound = false)
 {
 	bool didSlide = false;
 	static bool wasRDown = false;
-	_stprintf_s<255>(g_valueBuffer, _T("%f"), (*pValue));
+	if (bRound)
+		_stprintf_s<255>(g_valueBuffer, _T("%d"), (int)(*pValue));
+	else
+		_stprintf_s<255>(g_valueBuffer, _T("%f"), (*pValue));
 	float percentage = 0.0f;
 	float markerWidth = 2.0f;
 	if (g_rButton && (g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h || wasRDown))
@@ -141,6 +198,9 @@ bool doSlider( I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pVa
 	}
 	else
 		wasRDown = false;
+
+	if (bRound && didSlide)
+		(*pValue) = (float)((int)((*pValue) + 0.5f));
 
 	SColour col;
 	CreateColourFromRGB(col, 0x6073B2FF);
@@ -200,24 +260,27 @@ void OnMouseCallback(int16 x, int16 y, bool rButton, bool mButton, bool lButton,
 	//Logger.Info(_T("%d, %d"), g_x, g_y);
 }
 
-void buildTerrain(int y, float xOffset, float yOffset, int width, int height, I2DRenderer* pRenderer)
+void buildTerrain(rhandle& hTerrain, int y, float xOffset, float yOffset, int width, int height, I2DRenderer* pRenderer)
 {
 	float xPos = 0.0f;
 	int x = 0;
-	g_pTerrainVerts[x] = float2(xPos, (float)height*4.0f);
+	g_pTerrainVerts[x] = float2(xPos, 1000.0f);
 	x++;
 	for (; x < width+1; ++x)
 	{
 		xPos = (float)x;
 		float x_ = (float)((((float)x + 1) - ((x + 1) / width * width)) / ((float)width) ) * 15.0f;
 		float y_ = (float)((((float)y + 1) / width) / ((float)height)) * 15.0f;
-		float yPos = (float)height - yOffset - (Perlin::Get2DNoise(x_ + xOffset, (float)y, 0.25f, 8)) * (float)height;
+		float yPos = (float)height - yOffset - (Perlin::Get2DNoise(x_ + xOffset, (float)y, g_persistance, g_octaves)) * (float)height;
 		//float yPos = (float)height - (Perlin::Get2DNoise(xPos, 100.0f, 0.5f, 8)) * (float)height;
 
 		g_pTerrainVerts[x] = float2(xPos, yPos);
 	}
-	g_pTerrainVerts[x] = float2(xPos, (float)height*4.0f);
-	g_hTerrain = pRenderer->CreateFillGeometry(g_pTerrainVerts, (uint32)width+2);
+	g_pTerrainVerts[x] = float2(xPos, 1000.0f);
+	if (hTerrain != nullrhandle)
+		pRenderer->UpdateGeometry(hTerrain, g_pTerrainVerts, (uint32)width+2);
+	else
+		hTerrain = pRenderer->CreateFillGeometry(g_pTerrainVerts, (uint32)width+2);
 }
 
 void buildTrees(CWinWindow window, I2DRenderer* p2dRenderer)
@@ -282,7 +345,19 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 	CreateColourFromRGB(leafCol, 0x006600AA);
 	hLeafBrush = uiRenderer->CreateBrush(leafCol);
 	g_pTerrainVerts = new float2[window.Width() + 2];
-	buildTerrain(0, 0.0f, 100.0f, window.Width(), window.Height()/2, uiRenderer);
+	//buildTerrain(0, 0.0f, 100.0f, window.Width(), window.Height()/2, uiRenderer);
+
+	SColour terrainBase;
+
+	CreateColourFromRGB(terrainBase, 0x162E1CFF);
+	g_hTerrainBrushNear = uiRenderer->CreateBrush(terrainBase);
+
+	CreateColourFromRGB(terrainBase, 0x3C7D4DFF);
+	g_hTerrainBrushMid = uiRenderer->CreateBrush(terrainBase);
+
+	CreateColourFromRGB(terrainBase, 0x56B26EFF);
+	g_hTerrainBrushFar = uiRenderer->CreateBrush(terrainBase);
+
 	uiRenderer->SetRenderTarget(g_winrt);
 	SColour text, whiteText;
 	CreateColourFromRGB(text, 0x000000FF);
@@ -295,9 +370,9 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 	SColour white;
 	CreateColourFromRGB(white, 0xFFFFFFFF);
 
-	SColour transparent;
-	CreateColourFromRGB(transparent, 0x00000000);
-
+	SColour clearColour;
+	CreateColourFromRGB(clearColour, 0x00000000);// dark sky blue 0x175691FF
+	
 	uiRenderer->SetRenderTarget(g_itemrt);
 
 	int trunks = 0;
@@ -306,35 +381,64 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 	float xpostest = 0.0f;
 	float ypostest = 0.0f;
 	window.Show();
-	float xOffset = 0;
+	float xOffsetFar = 0;
+	float xOffsetMid= 0;
+	float xOffsetNear = 0;
+
+	bool bDoTree = false;
+	bool bDoTerrain = false;
+
+	g_nearYOffset = 1000.0f;
+	g_midYOffset = 0.0f;
+	g_farYOffset = -1000.0f;
+
+	g_persistance = 0.5f;
+	g_octaves = 4;
+
+	g_farHeightScale = 0.37f;
+	g_midHeightScale = 0.29f;
+	g_nearHeightScale = 0.33f;
+
+	g_nearHeightOffset = -240.0f;
+	g_midHeightOffset = -140.0f;
+	g_farHeightOffset = -120.0f;
+
 	while (!window.ShouldQuit())
 	{
-		xOffset += 0.01f;
+		xOffsetFar  += 0.01f;
+		xOffsetMid  += 0.02f;
+		xOffsetNear += 0.03f;
 		//ypostest += 0.1f;
 		window.Update();
 
-		uiRenderer->SetClearColor(transparent);
+		uiRenderer->SetClearColor(clearColour);
 		uiRenderer->BeginDraw();
 
-		buildTerrain(-1000 + (int)ypostest, xOffset, 25.0f, window.Width(), window.Height() / 4, uiRenderer);
-		uiRenderer->DrawFillGeometry(g_hTerrain, hLeafBrush);
-		buildTerrain(0 + (int)ypostest, xOffset, 25.0f, window.Width(), window.Height() / 2, uiRenderer);
-		uiRenderer->DrawFillGeometry(g_hTerrain, hLeafBrush);
-		buildTerrain(1000 + (int)ypostest, xOffset, 100.0f, window.Width(), window.Height(), uiRenderer);
-		uiRenderer->DrawFillGeometry(g_hTerrain, hLeafBrush);
-
-		// TODO: now optimise for overdraw
-		for (int i = 0; i < numTrees; ++i)
+		if (bDoTerrain)
 		{
-			float2 treePos = float2(xpostest + ((float)i*100.0f), 0.0f);
-			uiRenderer->DrawFillGeometry(g_trees[i], hRectFillBrush, treePos);
+			buildTerrain(g_farTerrain, g_farYOffset + (int)ypostest, xOffsetFar, g_farHeightOffset, window.Width(), window.Height() * g_farHeightScale, uiRenderer);
+			uiRenderer->DrawFillGeometry(g_farTerrain, g_hTerrainBrushFar);
+			buildTerrain(g_midTerrain, g_midYOffset + (int)ypostest, xOffsetMid, g_midHeightOffset, window.Width(), window.Height() * g_midHeightScale, uiRenderer);
+			uiRenderer->DrawFillGeometry(g_midTerrain, g_hTerrainBrushMid);
+			buildTerrain(g_nearTerrain, g_nearYOffset + (int)ypostest, xOffsetNear, g_nearHeightOffset, window.Width(), window.Height() * g_nearHeightScale, uiRenderer);
+			uiRenderer->DrawFillGeometry(g_nearTerrain, g_hTerrainBrushNear);
+		}
 
-			if (g_drawLeaves)
+		if (bDoTree)
+		{
+			// TODO: now optimise for overdraw
+			for (int i = 0; i < numTrees; ++i)
 			{
-				for (auto leafIter = g_leafIndexes[i].begin(); leafIter != g_leafIndexes[i].end(); ++leafIter)
+				float2 treePos = float2(xpostest + ((float)i*100.0f), 0.0f);
+				uiRenderer->DrawFillGeometry(g_trees[i], hRectFillBrush, treePos);
+
+				if (g_drawLeaves)
 				{
-					float2 pos = g_treeVertices[i][(*leafIter)];
-					uiRenderer->DrawFillGeometry(g_hLeaf, hLeafBrush, float2(pos.x + treePos.x, pos.y + treePos.y));
+					for (auto leafIter = g_leafIndexes[i].begin(); leafIter != g_leafIndexes[i].end(); ++leafIter)
+					{
+						float2 pos = g_treeVertices[i][(*leafIter)];
+						uiRenderer->DrawFillGeometry(g_hLeaf, hLeafBrush, float2(pos.x + treePos.x, pos.y + treePos.y));
+					}
 				}
 			}
 		}
@@ -357,27 +461,81 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 		uiRenderer->SetClearColor(white);
 		uiRenderer->BeginDraw();
 		uiRenderer->DrawBitmap(rtImg, float2(), float2(1.0, 1.0));
+		uiRenderer->DestroyResource(rtImg);
+
+		if (doToggleButton(uiRenderer, _T("Tree"), SRect(0.0f, 0.0f, 100.0f, 20.0f), &bDoTree))
+			if (bDoTerrain)
+				bDoTerrain = false;
+		if (doToggleButton(uiRenderer, _T("Terrain"), SRect(103.0f, 0.0f, 100.0f, 20.0f), &bDoTerrain))
+			if (bDoTree)
+				bDoTree = false;
+
 		bool paramChanged = false;
-		if (doSlider(uiRenderer, _T("branch pow"), SRect(20.0f, 20.0f, 100.0f, 20.0f), &g_branchPow, 0.1f, 30.0f))
-			paramChanged = true;
-		if (doSlider(uiRenderer, _T("scale"), SRect(20.0f, 65.0f, 100.0f, 20.0f), &g_scale, 0.1f, 100.0f))
-			paramChanged = true;
-		if (doSlider(uiRenderer, _T("max angle"), SRect(20.0f, 110.0f, 100.0f, 20.0f), &g_maxBranchAngle, -M_PI*2.0f, M_PI*2.0f))
-			paramChanged = true;
-		if (doSlider(uiRenderer, _T("thick scale"), SRect(20.0f, 155.0f, 100.0f, 20.0f), &g_thickScale, 0.1f, 10.0f))
-			paramChanged = true;
-		doCheckBox(uiRenderer, _T("draw leaves"), SRect(20.0f, 200.0f, 100.0f, 20.0f), &g_drawLeaves);
-		if (doSlider(uiRenderer, _T("max depth"), SRect(20.0f, 245.0f, 100.0f, 20.0f), &g_maxDepth, 1.0f, 20.0f))
-			paramChanged = true;
-		if (paramChanged)
+		if (bDoTree)
 		{
-			buildTrees(window, uiRenderer);
+			if (doSlider(uiRenderer, _T("branch pow"), SRect(20.0f, 40.0f, 100.0f, 20.0f), &g_branchPow, 0.1f, 30.0f))
+				paramChanged = true;
+			if (doSlider(uiRenderer, _T("scale"), SRect(20.0f, 85.0f, 100.0f, 20.0f), &g_scale, 0.1f, 100.0f))
+				paramChanged = true;
+			if (doSlider(uiRenderer, _T("max angle"), SRect(20.0f, 130.0f, 100.0f, 20.0f), &g_maxBranchAngle, -M_PI*2.0f, M_PI*2.0f))
+				paramChanged = true;
+			if (doSlider(uiRenderer, _T("thick scale"), SRect(20.0f, 175.0f, 100.0f, 20.0f), &g_thickScale, 0.1f, 10.0f))
+				paramChanged = true;
+			doCheckBox(uiRenderer, _T("draw leaves"), SRect(20.0f, 220.0f, 100.0f, 20.0f), &g_drawLeaves);
+			if (doSlider(uiRenderer, _T("max depth"), SRect(20.0f, 265.0f, 100.0f, 20.0f), &g_maxDepth, 1.0f, 20.0f))
+				paramChanged = true;
+			if (paramChanged)
+			{
+				buildTrees(window, uiRenderer);
+			}
+			bool savePng = doButton(uiRenderer, _T("save"), SRect(20.0f, 310.0f, 100, 20.0f));
+			if (savePng)
+			{
+				uiRenderer->SavePngImage(g_itemrt);
+				Logger.Info(_T("Saved image to C:\\Output.png"));
+			}
 		}
-		bool savePng = doButton(uiRenderer, _T("save"), SRect(20.0f, 290.0f, 100, 20.0f));
-		if (savePng)
+		else if (bDoTerrain)
 		{
-			uiRenderer->SavePngImage(g_itemrt);
-			Logger.Info(_T("Saved image to C:\\Output.png"));
+			if (doSlider(uiRenderer, _T("Near Seed"), SRect(20.0f, 40.0f, 100.0f, 20.0f), &g_nearYOffset, -1000.0f, 1000.0f, true))
+				paramChanged = true;
+
+			if (doSlider(uiRenderer, _T("Mid Seed"), SRect(20.0f, 90.0f, 100.0f, 20.0f), &g_midYOffset, -1000.0f, 1000.0f, true))
+				paramChanged = true;
+
+			if (doSlider(uiRenderer, _T("Far Seed"), SRect(20.0f, 135.0f, 100.0f, 20.0f), &g_farYOffset, -1000.0f, 1000.0f, true))
+				paramChanged = true;
+
+			if (doSlider(uiRenderer, _T("Persistance"), SRect(20.0f, 180.0f, 100.0f, 20.0f), &g_persistance, 0.0f, 1.0f))
+				paramChanged = true;
+
+			if (doSlider(uiRenderer, _T("Octaves"), SRect(20.0f, 225.0f, 100.0f, 20.0f), &g_octaves, 1.0f, 20.0f, true))
+				paramChanged = true;
+			
+			if (doSlider(uiRenderer, _T("Far Scale"), SRect(20.0f, 270.0f, 100.0f, 20.0f), &g_farHeightScale , 0.0f, 1.0f))
+				paramChanged = true;
+
+			if (doSlider(uiRenderer, _T("Mid Scale"), SRect(20.0f, 315.0f, 100.0f, 20.0f), &g_midHeightScale, 0.0f, 1.0f))
+				paramChanged = true;
+
+			if (doSlider(uiRenderer, _T("Near Scale"), SRect(20.0f, 360.0f, 100.0f, 20.0f), &g_nearHeightScale, 0.0f, 1.0f))
+				paramChanged = true;
+
+			if (doSlider(uiRenderer, _T("Far Offset"), SRect(20.0f, 405.0f, 100.0f, 20.0f), &g_farHeightOffset, -1000.0f, 1000.0f))
+				paramChanged = true;
+
+			if (doSlider(uiRenderer, _T("Mid Offset"), SRect(20.0f, 450.0f, 100.0f, 20.0f), &g_midHeightOffset, -1000.0f, 1000.0f))
+				paramChanged = true;
+
+			if (doSlider(uiRenderer, _T("Near Offset"), SRect(20.0f, 495.0f, 100.0f, 20.0f), &g_nearHeightOffset, -1000.0f, 1000.0f))
+				paramChanged = true;
+
+			bool savePng = doButton(uiRenderer, _T("save"), SRect(20.0f, 540.0f, 100, 20.0f));
+			if (savePng)
+			{
+				uiRenderer->SavePngImage(g_itemrt);
+				Logger.Info(_T("Saved image to C:\\Output.png"));
+			}
 		}
 		uiRenderer->EndDraw();
 
