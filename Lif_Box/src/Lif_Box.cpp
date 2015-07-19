@@ -11,6 +11,8 @@ using namespace tod;
 #include <fstream>
 #include <algorithm>
 
+#include <ctime>
+
 using namespace std;
 
 #define _USE_MATH_DEFINES // for PI!
@@ -24,6 +26,8 @@ using namespace std;
 #include "LSystemTree.h"
 
 #include "PerlinNoise.h"
+
+#include "InputKeyboardKeys.h"
 
 using namespace lif;
 using namespace uti;
@@ -54,15 +58,15 @@ int   g_Seed = rand();
 rhandle g_hBranchBrush;
 rhandle hLeafBrush;
 
-int16 g_x = 0;
-int16 g_y = 0;
-int16 g_xd = 0;
-int16 g_yd = 0;
+i16 g_x = 0;
+i16 g_y = 0;
+i16 g_xd = 0;
+i16 g_yd = 0;
 bool g_rButton;
 bool g_rButtonUp;
 bool g_mButton;
 bool g_lButton;
-int16 g_wheelDelta;
+i16 g_wheelDelta;
 
 tchar g_valueBuffer[255];
 
@@ -71,12 +75,12 @@ rhandle* g_trees = new rhandle[numTrees];
 std::vector<int>* g_leafIndexes = new std::vector<int>[numTrees];
 std::vector<float2>* g_treeVertices = new std::vector<float2>[numTrees];
 
-float g_branchPow = 1.0f;
-float g_scale = 6.0f;
-float g_maxBranchAngle = 0.0f;
-float g_thickScale = 1.0f;
+r32 g_branchPow = 1.0f;
+r32 g_scale = 6.0f;
+r32 g_maxBranchAngle = 0.0f;
+r32 g_thickScale = 1.0f;
 bool  g_drawLeaves = true;
-float g_maxDepth = 8.0f;
+r32 g_maxDepth = 8.0f;
 
 rhandle g_hLeaf = nullrhandle;
 
@@ -92,24 +96,38 @@ rhandle g_hTerrainBrushFar = nullrhandle;
 rhandle g_hTerrainBrushMid = nullrhandle;
 rhandle g_hTerrainBrushNear = nullrhandle;
 
-float g_nearYOffset;
-float g_farYOffset;
-float g_midYOffset;
+r32 g_nearYOffset;
+r32 g_farYOffset;
+r32 g_midYOffset;
 
-float g_persistance;
-float g_octaves;
+r32 g_persistance;
+r32 g_octaves;
 
-float g_nearHeightScale;
-float g_midHeightScale;
-float g_farHeightScale;
+r32 g_nearHeightScale;
+r32 g_midHeightScale;
+r32 g_farHeightScale;
 
-float g_nearHeightOffset;
-float g_midHeightOffset;
-float g_farHeightOffset;
+r32 g_nearHeightOffset;
+r32 g_midHeightOffset;
+r32 g_farHeightOffset;
 
 rhandle g_nearTerrain = nullrhandle;
 rhandle g_midTerrain  = nullrhandle;
 rhandle g_farTerrain  = nullrhandle;
+
+r32 g_speedFar;
+r32 g_speedMid;
+r32 g_speedNear;
+
+// Focusable UI uses this to identify itself
+u32 g_nextUiId;
+u32 g_focusedUiId;
+u32 g_focusedTextPos = uint32_max;
+#define CREATE_UI_ID ++g_nextUiId
+tchar g_focusValueBuffer[255];
+
+bool g_keysDown[0xFF];
+bool g_keysLast[0xFF];
 
 bool doButton(I2DRenderer* pRenderer, const tchar* text, SRect rect)
 {
@@ -169,22 +187,114 @@ bool doToggleButton(I2DRenderer* pRenderer, const tchar* text, SRect rect, bool*
 	return isDown;
 }
 
+// TODO: This is pretty broken right now we need to fix delete without keeping copying back from the main buffer
+bool doTextBox(I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pValue, float valueMin, float valueMax, const tchar* format = _T("%f"), bool bRound = false)
+{
+	u32 id = CREATE_UI_ID;
+
+	_stprintf_s<255>(g_valueBuffer, format, (*pValue));
+
+	bool mouseOver = g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h;
+	if (g_rButtonUp && mouseOver && g_focusedUiId != id)
+	{
+		g_focusedUiId = id;
+		g_focusedTextPos = uint32_max;
+		_stprintf_s<255>(g_focusValueBuffer, _T("%s"), g_valueBuffer);
+		auto valueLen = _tcslen(g_focusValueBuffer);
+		if (g_focusedTextPos >= valueLen)
+			g_focusedTextPos = (u32)max<size_t>(valueLen, 0);
+		tstring str = g_focusValueBuffer;
+		tstring first = str.substr(0, g_focusedTextPos);
+		tstring last = _T("");
+		if (valueLen != g_focusedTextPos)
+			last = str.substr(g_focusedTextPos, valueLen - g_focusedTextPos);
+		_stprintf_s<255>(g_focusValueBuffer, _T("%s|%s"), first.c_str(), last.c_str());
+	}
+	else if (g_focusedUiId == id && g_rButtonUp && !mouseOver)
+	{
+		g_focusedUiId = 0;
+		g_focusedTextPos = uint32_max;
+		// TODO: Deal with setting value?
+	}
+	else if (g_focusedUiId == id)
+	{
+		if (!g_keysDown[UTI_KEYBOARD_RIGHT] && g_keysLast[UTI_KEYBOARD_RIGHT])
+		{
+			g_focusedTextPos++;
+			_stprintf_s<255>(g_focusValueBuffer, _T("%s"), g_valueBuffer);
+			auto valueLen = _tcslen(g_focusValueBuffer);
+			if (g_focusedTextPos >= valueLen)
+				g_focusedTextPos = (u32)max<size_t>(valueLen, 0);
+			tstring str = g_focusValueBuffer;
+			tstring first = str.substr(0, g_focusedTextPos);
+			tstring last = _T("");
+			if (valueLen != g_focusedTextPos)
+				last = str.substr(g_focusedTextPos, valueLen - g_focusedTextPos);
+			_stprintf_s<255>(g_focusValueBuffer, _T("%s|%s"), first.c_str(), last.c_str());
+		}
+		else if (!g_keysDown[UTI_KEYBOARD_LEFT] && g_keysLast[UTI_KEYBOARD_LEFT])
+		{
+			g_focusedTextPos--;
+			_stprintf_s<255>(g_focusValueBuffer, _T("%s"), g_valueBuffer);
+			auto valueLen = _tcslen(g_focusValueBuffer);
+			if (g_focusedTextPos >= valueLen)
+				g_focusedTextPos = (u32)max<size_t>(valueLen, 0);
+			tstring str = g_focusValueBuffer;
+			tstring first = str.substr(0, g_focusedTextPos);
+			tstring last = _T("");
+			if (valueLen != g_focusedTextPos)
+				last = str.substr(g_focusedTextPos, valueLen - g_focusedTextPos);
+			_stprintf_s<255>(g_focusValueBuffer, _T("%s|%s"), first.c_str(), last.c_str());
+		}
+		else if (!g_keysDown[UTI_KEYBOARD_BACK] && g_keysLast[UTI_KEYBOARD_BACK])
+		{
+			tstring str = g_valueBuffer;
+			str = str.replace(g_focusedTextPos-1,1,_T(""));
+			_stprintf_s<255>(g_valueBuffer, _T("%s"), str.c_str());
+			_stprintf_s<255>(g_focusValueBuffer, _T("%s"), g_valueBuffer);
+			auto valueLen = _tcslen(g_focusValueBuffer);
+			if (g_focusedTextPos >= valueLen)
+				g_focusedTextPos = (u32)max<size_t>(valueLen, 0);
+			str = g_focusValueBuffer;
+			tstring first = str.substr(0, g_focusedTextPos);
+			tstring last = _T("");
+			if (valueLen != g_focusedTextPos)
+				last = str.substr(g_focusedTextPos, valueLen - g_focusedTextPos);
+			_stprintf_s<255>(g_focusValueBuffer, _T("%s|%s"), first.c_str(), last.c_str());
+		}
+	}
+
+	SColour col;
+	if(g_focusedUiId != id)
+		CreateColourFromRGB(col, 0x6073B2FF);
+	else
+		CreateColourFromRGB(col, 0xFFFFFFFF);
+	pRenderer->DrawRectangle(pRenderer->CreateBrush(col), rect);
+
+	if (g_focusedUiId == id)
+	{
+		pRenderer->DrawTextString(g_focusValueBuffer, rect, g_hTextBrush);
+	}
+	else
+		pRenderer->DrawTextString(g_valueBuffer, rect, g_hTextBrush);
+
+	return false;
+}
+
 bool doSlider( I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pValue, float valueMin, float valueMax, bool bRound = false)
 {
 	bool didSlide = false;
-	static bool wasRDown = false;
 	if (bRound)
 		_stprintf_s<255>(g_valueBuffer, _T("%d"), (int)(*pValue));
 	else
 		_stprintf_s<255>(g_valueBuffer, _T("%f"), (*pValue));
 	float percentage = 0.0f;
 	float markerWidth = 2.0f;
-	if (g_rButton && (g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h || wasRDown))
+	if (g_rButton && (g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h))
 	{
 		float posInSlider = g_x - rect.x;
 		percentage = std::fmax(std::fmin(posInSlider / rect.w, 1.0f), 0.0f);
 		(*pValue) = percentage * (valueMax - valueMin) + valueMin;
-		//wasRDown = true;
 		didSlide = true;
 	}
 	else if (g_wheelDelta != 0 && g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h)
@@ -193,11 +303,8 @@ bool doSlider( I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pVa
 		float add = g_wheelDelta * 0.01f * range;
 		(*pValue) += add;
 		(*pValue) = std::fmax(std::fmin((*pValue), valueMax), valueMin);
-		wasRDown = false;
 		didSlide = true;
 	}
-	else
-		wasRDown = false;
 
 	if (bRound && didSlide)
 		(*pValue) = (float)((int)((*pValue) + 0.5f));
@@ -213,7 +320,8 @@ bool doSlider( I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pVa
 
 	pRenderer->DrawTextString(text, rect, g_hTextBrush);
 	rect.y -= rect.h;
-	pRenderer->DrawTextString(g_valueBuffer, rect, g_hTextBrush);
+	//pRenderer->DrawTextString(g_valueBuffer, rect, g_hTextBrush);
+	doTextBox(pRenderer, g_valueBuffer, rect, pValue, valueMin, valueMax, _T("%f"), bRound);
 
 	return didSlide;
 }
@@ -260,16 +368,21 @@ void OnMouseCallback(int16 x, int16 y, bool rButton, bool mButton, bool lButton,
 	//Logger.Info(_T("%d, %d"), g_x, g_y);
 }
 
-void buildTerrain(rhandle& hTerrain, int y, float xOffset, float yOffset, int width, int height, I2DRenderer* pRenderer)
+void OnKeyboardCallback(u32 keyCode, bool isDown, bool isSyskey)
+{
+	g_keysDown[keyCode] = isDown;
+}
+
+void buildTerrain(rhandle& hTerrain, int y, float xOffset, float yOffset, int width, int height, int xResolution, I2DRenderer* pRenderer)
 {
 	float xPos = 0.0f;
 	int x = 0;
 	g_pTerrainVerts[x] = float2(xPos, 1000.0f);
 	x++;
-	for (; x < width+1; ++x)
+	for (; x < xResolution+1; ++x)
 	{
-		xPos = (float)x;
-		float x_ = (float)((((float)x + 1) - ((x + 1) / width * width)) / ((float)width) ) * 15.0f;
+		xPos = (float)x*(width / xResolution);
+		float x_ = (float)((((float)(int)xPos + 1) - (((int)xPos + 1) / width * width)) / ((float)width)) * 15.0f;
 		float y_ = (float)((((float)y + 1) / width) / ((float)height)) * 15.0f;
 		float yPos = (float)height - yOffset - (Perlin::Get2DNoise(x_ + xOffset, (float)y, g_persistance, g_octaves)) * (float)height;
 		//float yPos = (float)height - (Perlin::Get2DNoise(xPos, 100.0f, 0.5f, 8)) * (float)height;
@@ -278,9 +391,9 @@ void buildTerrain(rhandle& hTerrain, int y, float xOffset, float yOffset, int wi
 	}
 	g_pTerrainVerts[x] = float2(xPos, 1000.0f);
 	if (hTerrain != nullrhandle)
-		pRenderer->UpdateGeometry(hTerrain, g_pTerrainVerts, (uint32)width+2);
+		pRenderer->UpdateGeometry(hTerrain, g_pTerrainVerts, (uint32)xResolution + 2);
 	else
-		hTerrain = pRenderer->CreateFillGeometry(g_pTerrainVerts, (uint32)width+2);
+		hTerrain = pRenderer->CreateFillGeometry(g_pTerrainVerts, (uint32)xResolution + 2);
 }
 
 void buildTrees(CWinWindow window, I2DRenderer* p2dRenderer)
@@ -366,6 +479,7 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 	g_hWhiteTextBrush = uiRenderer->CreateBrush(whiteText);
 
 	window.RegisterMouseInput(OnMouseCallback);
+	window.RegisterKeyboardInput(OnKeyboardCallback);
 
 	SColour white;
 	CreateColourFromRGB(white, 0xFFFFFFFF);
@@ -403,11 +517,24 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 	g_midHeightOffset = -140.0f;
 	g_farHeightOffset = -120.0f;
 
+	g_speedFar  = 0.001f;
+	g_speedMid  = 0.002f;
+	g_speedNear = 0.003f;
+
+	chrono::system_clock::time_point start = std::chrono::high_resolution_clock::now();
+
 	while (!window.ShouldQuit())
 	{
-		xOffsetFar  += 0.01f;
-		xOffsetMid  += 0.02f;
-		xOffsetNear += 0.03f;
+		chrono::system_clock::time_point end = std::chrono::high_resolution_clock::now();
+
+		auto dt = end - start;
+		
+		std::chrono::milliseconds dtms = chrono::duration_cast<std::chrono::milliseconds>(dt);
+
+		xOffsetFar  += g_speedFar  * ((float)dtms.count()/1000.0f);
+		xOffsetMid  += g_speedMid  * ((float)dtms.count()/1000.0f);
+		xOffsetNear += g_speedNear * ((float)dtms.count()/1000.0f);
+
 		//ypostest += 0.1f;
 		window.Update();
 
@@ -416,11 +543,11 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 
 		if (bDoTerrain)
 		{
-			buildTerrain(g_farTerrain, g_farYOffset + (int)ypostest, xOffsetFar, g_farHeightOffset, window.Width(), window.Height() * g_farHeightScale, uiRenderer);
+			buildTerrain(g_farTerrain, g_farYOffset + (int)ypostest, xOffsetFar, g_farHeightOffset, window.Width(), window.Height() * g_farHeightScale, window.Width() / 2, uiRenderer);
 			uiRenderer->DrawFillGeometry(g_farTerrain, g_hTerrainBrushFar);
-			buildTerrain(g_midTerrain, g_midYOffset + (int)ypostest, xOffsetMid, g_midHeightOffset, window.Width(), window.Height() * g_midHeightScale, uiRenderer);
+			buildTerrain(g_midTerrain, g_midYOffset + (int)ypostest, xOffsetMid, g_midHeightOffset, window.Width(), window.Height() * g_midHeightScale, window.Width() / 2, uiRenderer);
 			uiRenderer->DrawFillGeometry(g_midTerrain, g_hTerrainBrushMid);
-			buildTerrain(g_nearTerrain, g_nearYOffset + (int)ypostest, xOffsetNear, g_nearHeightOffset, window.Width(), window.Height() * g_nearHeightScale, uiRenderer);
+			buildTerrain(g_nearTerrain, g_nearYOffset + (int)ypostest, xOffsetNear, g_nearHeightOffset, window.Width(), window.Height() * g_nearHeightScale, window.Width() / 2, uiRenderer);
 			uiRenderer->DrawFillGeometry(g_nearTerrain, g_hTerrainBrushNear);
 		}
 
@@ -530,6 +657,16 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 			if (doSlider(uiRenderer, _T("Near Offset"), SRect(20.0f, 495.0f, 100.0f, 20.0f), &g_nearHeightOffset, -1000.0f, 1000.0f))
 				paramChanged = true;
 
+			// Right Side
+			if (doSlider(uiRenderer, _T("Far Speed"), SRect(window.Width()-220.0f, 40.0f, 200.0f, 20.0f), &g_speedFar, -0.1f, 0.1f))
+				paramChanged = true;
+
+			if (doSlider(uiRenderer, _T("Mid Speed"), SRect(window.Width()-220.0f, 90.0f, 200.0f, 20.0f), &g_speedMid, -0.1f, 0.1f))
+				paramChanged = true;
+
+			if (doSlider(uiRenderer, _T("Near Speed"), SRect(window.Width()-220.0f, 135.0f, 200.0f, 20.0f), &g_speedNear, -0.1f, 0.1f))
+				paramChanged = true;
+
 			bool savePng = doButton(uiRenderer, _T("save"), SRect(20.0f, 540.0f, 100, 20.0f));
 			if (savePng)
 			{
@@ -543,6 +680,9 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 
 		g_rButtonUp = false; // kinda nasty...
 		g_wheelDelta = 0;
+
+		g_nextUiId = 0;
+		memcpy(g_keysLast, g_keysDown, sizeof(g_keysDown)*sizeof(bool));
 	}
 
 	// Free trees etc.
@@ -562,6 +702,11 @@ int lif_main()
 
 	uint32 width = 900;
 	uint32 height = 600;
+
+	memset(g_keysDown, 0, sizeof(g_keysDown)*sizeof(bool));
+	memset(g_keysLast, 0, sizeof(g_keysLast)*sizeof(bool));
+	memset(g_valueBuffer, 0, 255 * sizeof(char));
+	memset(g_focusValueBuffer, 0, 255 * sizeof(char));
 
 	CWinWindow window;
 	window.Initialise(width, height, false, _T("Lif"));
