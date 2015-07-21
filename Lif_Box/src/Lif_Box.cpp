@@ -213,54 +213,147 @@ bool doTextBox(I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pVa
 	else if (g_focusedUiId == id && g_rButtonUp && !mouseOver)
 	{
 		g_focusedUiId = 0;
+		tstring str = g_focusValueBuffer;
+		str = str.replace(g_focusedTextPos, 1, _T(""));
+		_stprintf_s<255>(g_valueBuffer, _T("%s"), str.c_str());
+		(*pValue) = max<float>(min<float>(TSTR_TO_FLOAT(g_valueBuffer), valueMax), valueMin);
 		g_focusedTextPos = uint32_max;
-		// TODO: Deal with setting value?
 	}
 	else if (g_focusedUiId == id)
 	{
 		if (!g_keysDown[UTI_KEYBOARD_RIGHT] && g_keysLast[UTI_KEYBOARD_RIGHT])
 		{
-			g_focusedTextPos++;
-			_stprintf_s<255>(g_focusValueBuffer, _T("%s"), g_valueBuffer);
-			auto valueLen = _tcslen(g_focusValueBuffer);
-			if (g_focusedTextPos >= valueLen)
-				g_focusedTextPos = (u32)max<size_t>(valueLen, 0);
-			tstring str = g_focusValueBuffer;
-			tstring first = str.substr(0, g_focusedTextPos);
-			tstring last = _T("");
-			if (valueLen != g_focusedTextPos)
+			if (g_focusedTextPos != _tcslen(g_focusValueBuffer) - 1)
+			{
+				g_focusedTextPos++;
+				auto valueLen = _tcslen(g_focusValueBuffer);
+				g_focusedTextPos = (u32)min<size_t>(max<size_t>(g_focusedTextPos, 0), valueLen);
+				tstring str = g_focusValueBuffer;
+				str = str.replace(g_focusedTextPos - 1, 1, _T(""));
+				tstring first = str.substr(0, g_focusedTextPos);
+				tstring last = _T("");
 				last = str.substr(g_focusedTextPos, valueLen - g_focusedTextPos);
-			_stprintf_s<255>(g_focusValueBuffer, _T("%s|%s"), first.c_str(), last.c_str());
+				_stprintf_s<255>(g_focusValueBuffer, _T("%s|%s"), first.c_str(), last.c_str());
+			}
 		}
 		else if (!g_keysDown[UTI_KEYBOARD_LEFT] && g_keysLast[UTI_KEYBOARD_LEFT])
 		{
-			g_focusedTextPos--;
-			_stprintf_s<255>(g_focusValueBuffer, _T("%s"), g_valueBuffer);
-			auto valueLen = _tcslen(g_focusValueBuffer);
-			if (g_focusedTextPos >= valueLen)
-				g_focusedTextPos = (u32)max<size_t>(valueLen, 0);
-			tstring str = g_focusValueBuffer;
-			tstring first = str.substr(0, g_focusedTextPos);
-			tstring last = _T("");
-			if (valueLen != g_focusedTextPos)
+			if (g_focusedTextPos != 0)
+			{
+				g_focusedTextPos--;
+				auto valueLen = _tcslen(g_focusValueBuffer);
+				g_focusedTextPos = (u32)min<size_t>(max<size_t>(g_focusedTextPos, 0), valueLen);
+				tstring str = g_focusValueBuffer;
+				str = str.replace(g_focusedTextPos + 1, 1, _T(""));
+				tstring first = str.substr(0, g_focusedTextPos);
+				tstring last = _T("");
 				last = str.substr(g_focusedTextPos, valueLen - g_focusedTextPos);
-			_stprintf_s<255>(g_focusValueBuffer, _T("%s|%s"), first.c_str(), last.c_str());
+				_stprintf_s<255>(g_focusValueBuffer, _T("%s|%s"), first.c_str(), last.c_str());
+			}
 		}
 		else if (!g_keysDown[UTI_KEYBOARD_BACK] && g_keysLast[UTI_KEYBOARD_BACK])
 		{
-			tstring str = g_valueBuffer;
-			str = str.replace(g_focusedTextPos-1,1,_T(""));
-			_stprintf_s<255>(g_valueBuffer, _T("%s"), str.c_str());
-			_stprintf_s<255>(g_focusValueBuffer, _T("%s"), g_valueBuffer);
-			auto valueLen = _tcslen(g_focusValueBuffer);
-			if (g_focusedTextPos >= valueLen)
-				g_focusedTextPos = (u32)max<size_t>(valueLen, 0);
-			str = g_focusValueBuffer;
-			tstring first = str.substr(0, g_focusedTextPos);
-			tstring last = _T("");
-			if (valueLen != g_focusedTextPos)
-				last = str.substr(g_focusedTextPos, valueLen - g_focusedTextPos);
-			_stprintf_s<255>(g_focusValueBuffer, _T("%s|%s"), first.c_str(), last.c_str());
+			if (g_focusedTextPos > 0)
+			{
+				tstring str = g_focusValueBuffer;
+				str = str.replace(g_focusedTextPos, 1, _T(""));
+				str = str.replace(g_focusedTextPos - 1, 1, _T(""));
+				
+				auto valueLen = str.length();
+				g_focusedTextPos--;
+				g_focusedTextPos = (u32)min<size_t>(max<size_t>(g_focusedTextPos, 0), valueLen);
+				tstring first = str.substr(0, g_focusedTextPos);
+				tstring last = _T("");
+				if (valueLen != g_focusedTextPos)
+					last = str.substr(g_focusedTextPos, valueLen - g_focusedTextPos);
+				_stprintf_s<255>(g_focusValueBuffer, _T("%s|%s"), first.c_str(), last.c_str());
+			}
+		}
+		else
+		{
+			tstring str = g_focusValueBuffer;
+			bool num = false;
+			char keyCode = 0;
+			if (str.substr(0, 2) != _T("|-") || g_focusedTextPos != 0)
+			{
+				for (keyCode = '0'; keyCode <= '9'; ++keyCode)
+				{
+					if (!g_keysDown[keyCode] && g_keysLast[keyCode])
+					{
+						num = true;
+						break;
+					}
+				}
+			}
+			if (num)
+			{
+				tstring str = g_focusValueBuffer;
+				str = str.replace(g_focusedTextPos, 1, _T(""));
+
+				auto valueLen = str.length() + 1;
+				g_focusedTextPos++;
+				g_focusedTextPos = (u32)min<size_t>(max<size_t>(g_focusedTextPos, 0), valueLen);
+				tstring first = str.substr(0, g_focusedTextPos-1);
+				first.push_back((wchar_t)keyCode);
+				tstring last;
+				if (valueLen != g_focusedTextPos-1)
+					last = str.substr(g_focusedTextPos-1, valueLen - g_focusedTextPos);
+				_stprintf_s<255>(g_focusValueBuffer, _T("%s|%s"), first.c_str(), last.c_str());
+			}
+			else if (!g_keysDown[UTI_KEYBOARD_OEM_PERIOD] && g_keysLast[UTI_KEYBOARD_OEM_PERIOD])
+			{
+				if (str.find(_T(".")) == -1)
+				{
+					str = str.replace(g_focusedTextPos, 1, _T(""));
+
+					auto valueLen = str.length() + 1;
+					g_focusedTextPos++;
+					g_focusedTextPos = (u32)min<size_t>(max<size_t>(g_focusedTextPos, 0), valueLen);
+					tstring first = str.substr(0, g_focusedTextPos - 1);
+					first.append(_T("."));
+					tstring last;
+					if (valueLen != g_focusedTextPos - 1)
+						last = str.substr(g_focusedTextPos - 1, valueLen - g_focusedTextPos);
+					_stprintf_s<255>(g_focusValueBuffer, _T("%s|%s"), first.c_str(), last.c_str());
+				}
+			}
+			else if (!g_keysDown[UTI_KEYBOARD_OEM_MINUS] && g_keysLast[UTI_KEYBOARD_OEM_MINUS])
+			{
+				if (str.substr(0,2) != _T("|-") && g_focusedTextPos == 0)
+				{
+					str = str.replace(g_focusedTextPos, 1, _T(""));
+
+					auto valueLen = str.length() + 1;
+					g_focusedTextPos++;
+					g_focusedTextPos = (u32)min<size_t>(max<size_t>(g_focusedTextPos, 0), valueLen);
+					tstring first = str.substr(0, g_focusedTextPos - 1);
+					first.insert(0,_T("-"));
+					tstring last;
+					if (valueLen != g_focusedTextPos - 1)
+						last = str.substr(g_focusedTextPos - 1, valueLen - g_focusedTextPos);
+					_stprintf_s<255>(g_focusValueBuffer, _T("%s|%s"), first.c_str(), last.c_str());
+				}
+			}
+			else if (!g_keysDown[UTI_KEYBOARD_HOME] && g_keysLast[UTI_KEYBOARD_HOME])
+			{
+			}
+			else if (!g_keysDown[UTI_KEYBOARD_END] && g_keysLast[UTI_KEYBOARD_END])
+			{
+			}
+			else if (!g_keysDown[UTI_KEYBOARD_RETURN] && g_keysLast[UTI_KEYBOARD_RETURN])
+			{
+				g_focusedUiId = 0;
+				tstring str = g_focusValueBuffer;
+				str = str.replace(g_focusedTextPos, 1, _T(""));
+				_stprintf_s<255>(g_valueBuffer, _T("%s"), str.c_str());
+				(*pValue) = max<float>(min<float>(TSTR_TO_FLOAT(g_valueBuffer), valueMax), valueMin);
+				g_focusedTextPos = uint32_max;
+			}
+			else if (!g_keysDown[UTI_KEYBOARD_ESCAPE] && g_keysLast[UTI_KEYBOARD_ESCAPE])
+			{
+				g_focusedUiId = 0;
+				g_focusedTextPos = uint32_max;
+			}
 		}
 	}
 
