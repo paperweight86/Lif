@@ -336,9 +336,17 @@ bool doTextBox(I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pVa
 			}
 			else if (!g_keysDown[UTI_KEYBOARD_HOME] && g_keysLast[UTI_KEYBOARD_HOME])
 			{
+				str = str.replace(g_focusedTextPos, 1, _T(""));
+				auto valueLen = str.length();
+				g_focusedTextPos = 0;
+				_stprintf_s<255>(g_focusValueBuffer, _T("|%s"), str.c_str());
 			}
 			else if (!g_keysDown[UTI_KEYBOARD_END] && g_keysLast[UTI_KEYBOARD_END])
 			{
+				str = str.replace(g_focusedTextPos, 1, _T(""));
+				auto valueLen = str.length();
+				g_focusedTextPos = valueLen;
+				_stprintf_s<255>(g_focusValueBuffer, _T("%s|"), str.c_str());
 			}
 			else if (!g_keysDown[UTI_KEYBOARD_RETURN] && g_keysLast[UTI_KEYBOARD_RETURN])
 			{
