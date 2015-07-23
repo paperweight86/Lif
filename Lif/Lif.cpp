@@ -27,9 +27,9 @@ using namespace std;
 //#include <png.h>
 //#include "zlib.h"
 
-#include "inc\LSystemTree.h"
+#include "inc\ProcedrualBinaryTree.h"
 
-#include "HCAErosion.h"
+#include "inc\HCAErosion.h"
 
 #include "inc\PerlinNoise.h"
 
@@ -311,7 +311,7 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 		//      - overgrowth death/stunting
 		//		- noise
 		//	    - live editing (C# wrapper?)
-		CLSystemTree tree;
+		CProcedrualBinaryTree tree;
 		tree.m_maxTrunks = 1;
 		tree.m_scale = 6.0f;
 		tree.m_maxDepth = 8;

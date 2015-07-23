@@ -1,6 +1,6 @@
 #include "stdafx.h"
-#include "HCAErosion.h"
-#include "HCAErosionCell.h"
+#include "inc\HCAErosion.h"
+#include "inc\HCAErosionCell.h"
 
 #include <algorithm>
 

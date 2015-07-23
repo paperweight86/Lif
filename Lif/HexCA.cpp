@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
-#include "HexCA.h"
-#include "HexCACell.h"
+#include "inc\HexCA.h"
+#include "inc\HexCACell.h"
 
 using namespace lif;
 

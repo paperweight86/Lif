@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "HCAErosionCell.h"
+#include "inc\HCAErosionCell.h"
 
 using namespace lif;
 

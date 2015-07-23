@@ -4,7 +4,7 @@
 
 namespace lif
 {
-	class CLSystemTree
+	class CProcedrualBinaryTree
 	{
 	private:
 		struct SBranch
@@ -41,8 +41,8 @@ namespace lif
 		virtual void CalcBranchEndPoints(const float2& startPoint, const float2& endPoint,
 			float2& endPointA, float2& endPointB, float thickEnd);
 	public:
-		CLSystemTree();
-		virtual ~CLSystemTree();
+		CProcedrualBinaryTree();
+		virtual ~CProcedrualBinaryTree();
 		void Generate();
 		void ConsumeVertexBuffer(std::vector<float3>& out) { out = std::move(m_vertices); }
 		void ConsumeAuxIndexBuffer(const tchar* name, std::vector<int>& out)

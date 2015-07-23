@@ -23,11 +23,13 @@ using namespace std;
 //#include <png.h>
 //#include "zlib.h"
 
-#include "LSystemTree.h"
+#include "ProcedrualBinaryTree.h"
 
 #include "PerlinNoise.h"
 
 #include "InputKeyboardKeys.h"
+
+#include "HCAErosion.h"
 
 using namespace lif;
 using namespace uti;
@@ -129,6 +131,8 @@ tchar g_focusValueBuffer[255];
 bool g_keysDown[0xFF];
 bool g_keysLast[0xFF];
 
+void DoErosion(CWinWindow& window, I2DRenderer* uiRenderer);
+
 bool doButton(I2DRenderer* pRenderer, const tchar* text, SRect rect)
 {
 	bool isDown = g_rButtonUp && (g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h);
@@ -187,7 +191,6 @@ bool doToggleButton(I2DRenderer* pRenderer, const tchar* text, SRect rect, bool*
 	return isDown;
 }
 
-// TODO: This is pretty broken right now we need to fix delete without keeping copying back from the main buffer
 bool doTextBox(I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pValue, float valueMin, float valueMax, const tchar* format = _T("%f"), bool bRound = false)
 {
 	u32 id = CREATE_UI_ID;
@@ -213,10 +216,10 @@ bool doTextBox(I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pVa
 	else if (g_focusedUiId == id && g_rButtonUp && !mouseOver)
 	{
 		g_focusedUiId = 0;
-		tstring str = g_focusValueBuffer;
-		str = str.replace(g_focusedTextPos, 1, _T(""));
-		_stprintf_s<255>(g_valueBuffer, _T("%s"), str.c_str());
-		(*pValue) = max<float>(min<float>(TSTR_TO_FLOAT(g_valueBuffer), valueMax), valueMin);
+		//tstring str = g_focusValueBuffer;
+		//str = str.replace(g_focusedTextPos, 1, _T(""));
+		//_stprintf_s<255>(g_valueBuffer, _T("%s"), str.c_str());
+		//(*pValue) = max<float>(min<float>(TSTR_TO_FLOAT(g_valueBuffer), valueMax), valueMin);
 		g_focusedTextPos = uint32_max;
 	}
 	else if (g_focusedUiId == id)
@@ -507,7 +510,7 @@ void buildTrees(CWinWindow window, I2DRenderer* p2dRenderer)
 		//      - overgrowth death/stunting
 		//		- noise
 		//	    - live editing (C# wrapper?)
-		CLSystemTree tree;
+		CProcedrualBinaryTree tree;
 		tree.m_maxTrunks = 1;
 		tree.m_scale = g_scale;
 		tree.m_maxDepth = (uint8)g_maxDepth;
@@ -841,9 +844,189 @@ int lif_main()
 
 	doTree(window, uiRenderer);
 
+	//uiRenderer->SetRenderTarget(g_winrt);
+	//DoErosion(window, uiRenderer);
+
 	delete uiRenderer;
 
 	return 0;
+}
+
+void DoErosion(CWinWindow& window, I2DRenderer* uiRenderer)
+{
+	CHCAErosion ca(256, 256);
+	ca.CreateCells();
+	vector<float> heights;
+	//Perlin::Get2DNoiseArray(&heights[0], 256*256, 256, 256, 0.25f, 1);
+
+	float heightmax = -float_max;
+	float heightmin = float_max;
+
+	//retrieve random x and y offsets for the noise
+	float Randx = (float)rand();
+	float Randy = (float)rand();
+
+	uint16 t_width, t_height;
+	t_width = 256;
+	t_height = 256;
+
+	//generate the 2D perlin noise
+	for (unsigned long i = 0; i < t_width * t_height; i++)
+	{
+		float iF = (float)i;
+		float x_ = (float)(((iF + 1) - ((i + 1) / t_width * t_width)) / ((float)t_width) + Randx) * 24.0f;
+		float y_ = (float)(((iF + 1) / t_width) / ((float)t_height) + Randy) * 24.0f;
+		heights.push_back(((Perlin::Get2DNoise(x_ + Randx, y_, 0.6f, 8))));
+
+		//check for min and max values
+		if (heights[heights.size() - 1] > heightmax)
+			heightmax = heights[heights.size() - 1];
+
+		if (heights[heights.size() - 1] < heightmin)
+			heightmin = heights[heights.size() - 1];
+	}
+	//sample the heights upto the display boundries
+	for (unsigned long i = 0; i < t_width * t_height; i++)
+	{
+		heights[i] = (heights[i] - heightmin) / (heightmax - heightmin);
+	}
+	window.Show();
+	rhandle hImg = nullrhandle;
+	ca.InitialiseCells(heights);
+	//for (int i = 0; i < 1000; ++i)
+	//{
+	//	//std::this_thread::sleep_for(std::chrono::milliseconds(250));
+	//	ca.Step(0.0f);
+	//}
+
+	while (!window.ShouldQuit())
+	{
+		ca.Step(0.0f);
+		window.Update();
+
+		std::vector<uint8> vImg(256 * 256 * 4);
+		auto pixelIter = vImg.begin();
+		auto cells = ca.GetCells();
+		float wMax = float_min;
+		float wMin = float_max;
+		std::for_each(cells.begin(), cells.end(), [&wMax, &wMin](CHexCACell* cell)
+		{
+			CHCAErosionCell* erCell = static_cast<CHCAErosionCell*>(cell);
+			wMax = erCell->m_water > wMax ? erCell->m_water : wMax;
+			wMin = erCell->m_water < wMin ? erCell->m_water : wMin;
+		});
+		for (auto cellIter = cells.begin(); cellIter != cells.end(); ++cellIter)
+		{
+			CHCAErosionCell* erCell = static_cast<CHCAErosionCell*>(*cellIter);
+			(*pixelIter) = 0; // r
+			++pixelIter;
+			float water = std::min(std::max(erCell->m_water - wMin, 0.0f) / wMax - wMin, 1.0f);
+			// TODO: normalise terrain height
+			//(*pixelIter) = std::min<uint8>((uint8)(erCell->m_terrain*255.0f), 255); // g
+			++pixelIter;
+			//if (erCell->m_water >= 0.01f)
+			//(*pixelIter) = std::min<uint8>((uint8)(erCell->m_water*100.0f*255.0f), 255);; // b
+			(*pixelIter) = water*255.0f;
+			++pixelIter;
+			(*pixelIter) = 255; // a
+			++pixelIter;
+		}
+		std::vector<uint8> vImg2(256 * 256 * 4);
+		pixelIter = vImg2.begin();
+		for (auto cellIter = cells.begin(); cellIter != cells.end(); ++cellIter)
+		{
+			CHCAErosionCell* erCell = static_cast<CHCAErosionCell*>(*cellIter);
+			(*pixelIter) = 0; // r
+			++pixelIter;
+			//float water = std::min(std::max(erCell->m_water - wMin, 0.0f) / wMax - wMin, 1.0f);
+			// TODO: normalise terrain height
+			(*pixelIter) = std::min<uint8>((uint8)(erCell->m_terrain*255.0f), 255); // g
+			++pixelIter;
+			//if (erCell->m_water >= 0.01f)
+			//(*pixelIter) = std::min<uint8>((uint8)(erCell->m_water*100.0f*255.0f), 255);; // b
+			//(*pixelIter) = water*255.0f;
+			++pixelIter;
+			(*pixelIter) = 255; // a
+			++pixelIter;
+		}
+		std::vector<uint8> vImg3(256 * 256 * 4);
+		pixelIter = vImg3.begin();
+		for (auto cellIter = cells.begin(); cellIter != cells.end(); ++cellIter)
+		{
+			CHCAErosionCell* erCell = static_cast<CHCAErosionCell*>(*cellIter);
+			(*pixelIter) = std::min<uint8>((uint8)(erCell->m_sediment*1000.0f*255.0f), 255); // r
+			++pixelIter;
+			//float water = std::min(std::max(erCell->m_water - wMin, 0.0f) / wMax - wMin, 1.0f);
+			// TODO: normalise terrain height
+			(*pixelIter) = std::min<uint8>((uint8)(erCell->m_sediment*1000.0f*255.0f), 255); // g
+			++pixelIter;
+			//if (erCell->m_water >= 0.01f)
+			//(*pixelIter) = std::min<uint8>((uint8)(erCell->m_water*100.0f*255.0f), 255);; // b
+			//(*pixelIter) = water*255.0f;
+			++pixelIter;
+			(*pixelIter) = 255; // a
+			++pixelIter;
+		}
+		std::vector<uint8> vImgDiff(256 * 256 * 4);
+		auto heightIter = heights.cbegin();
+		auto cellIter2 = cells.begin();
+		pixelIter = vImgDiff.begin();
+		for (; heightIter != heights.cend(); ++heightIter)
+		{
+			CHCAErosionCell* erCell = static_cast<CHCAErosionCell*>(*cellIter2);
+
+			float heightDiff = (*heightIter) - erCell->m_terrain;
+
+			uint8 r, g, b, a;
+			r = g = b = 0;
+			a = 255;
+
+			if (heightDiff > float_epsilon)
+			{
+				b = std::min<uint8>((uint8)(heightDiff*255.0f), 255);
+			}
+			else if (heightDiff < -float_epsilon)
+			{
+				r = std::min<uint8>((uint8)(fabsf(heightDiff)*255.0f), 255);
+			}
+			else
+			{
+				//a = 0;
+			}
+
+			g = 0.0;// std::min<uint8>((uint8)(erCell->m_terrain*255.0f*0.1f), 255);
+
+			(*pixelIter) = r; // r
+			++pixelIter;
+			//float water = std::min(std::max(erCell->m_water - wMin, 0.0f) / wMax - wMin, 1.0f);
+			// TODO: normalise terrain height
+			(*pixelIter) = g; // g
+			++pixelIter;
+			//if (erCell->m_water >= 0.01f)
+			(*pixelIter) = b; // b
+			//(*pixelIter) = water*255.0f;
+			++pixelIter;
+			(*pixelIter) = a; // a
+			++pixelIter;
+
+			++cellIter2;
+		}
+		uiRenderer->BeginDraw();
+		// TODO: stop creating bitmaps and just update them?
+		hImg = uiRenderer->CreateImage(256, 256, &vImg[0]);
+		uiRenderer->DrawBitmap(hImg, float2(0.0f, 0.0f), float2(1.0f, 1.0f));
+		uiRenderer->DestroyResource(hImg);
+		hImg = uiRenderer->CreateImage(256, 256, &vImg2[0]);
+		uiRenderer->DrawBitmap(hImg, float2(256.0f, 0.0f), float2(1.0f, 1.0f));
+		uiRenderer->DestroyResource(hImg);
+		hImg = uiRenderer->CreateImage(256, 256, &vImg3[0]);
+		uiRenderer->DrawBitmap(hImg, float2(256.0f, 256.0f), float2(1.0f, 1.0f));
+		uiRenderer->DestroyResource(hImg);
+		hImg = uiRenderer->CreateImage(256, 256, &vImgDiff[0]);
+		uiRenderer->DrawBitmap(hImg, float2(0.0f, 256.0f), float2(1.0f, 1.0f));
+		uiRenderer->DestroyResource(hImg);
+		uiRenderer->EndDraw();
+	}
 }
 
 int _tmain(int argc, _TCHAR* argv[])

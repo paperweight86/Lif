@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "HexCACell.h"
+#include "inc\HexCACell.h"
 
 using namespace lif;
 

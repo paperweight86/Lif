@@ -1,10 +1,6 @@
 #pragma once
 
-/*
-	Author: Daniel Jennings
-	Date: 02/03/08
-	Referances: Derived From an explaination on http://freespace.virgin.net/hugo.elias/models/m_perlin.htm
-*/
+//Referances: Derived From an explaination on http://freespace.virgin.net/hugo.elias/models/m_perlin.htm
 
 namespace Perlin // all functions return noise in the range -1.0f - 1.0f
 {

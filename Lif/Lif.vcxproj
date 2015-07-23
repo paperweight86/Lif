@@ -184,11 +184,9 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="HCAErosion.h" />
-    <ClInclude Include="HCAErosionCell.h" />
-    <ClInclude Include="HexCA.h" />
-    <ClInclude Include="HexCACell.h" />
-    <ClInclude Include="inc\LSystemTree.h" />
+    <ClInclude Include="inc\HCAErosion.h" />
+    <ClInclude Include="inc\HCAErosionCell.h" />
+    <ClInclude Include="inc\ProcedrualBinaryTree.h" />
     <ClInclude Include="inc\PerlinNoise.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="CompressedData.h" />
@@ -207,7 +205,7 @@
     <ClCompile Include="HexCACell.cpp" />
     <ClCompile Include="IEntity.cpp" />
     <ClCompile Include="Lif.cpp" />
-    <ClCompile Include="LSystemTree.cpp" />
+    <ClCompile Include="ProcedrualBinaryTree.cpp" />
     <ClCompile Include="PerlinNoise.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -218,6 +216,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\README.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\License.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

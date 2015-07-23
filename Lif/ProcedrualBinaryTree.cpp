@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "inc\LSystemTree.h"
+#include "inc\ProcedrualBinaryTree.h"
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -12,7 +12,7 @@
 
 using namespace lif;
 
-CLSystemTree::CLSystemTree()
+CProcedrualBinaryTree::CProcedrualBinaryTree()
 {
 	// Angle of the trunk
 	m_maxTrunkDev = M_PI_F / 12.0f;
@@ -34,11 +34,11 @@ CLSystemTree::CLSystemTree()
 	m_maxBranchAngle = M_PI_F / 12.0f;
 }
 
-CLSystemTree::~CLSystemTree()
+CProcedrualBinaryTree::~CProcedrualBinaryTree()
 {
 }
 
-void CLSystemTree::CalcBranchEndPoints( const float2& startPoint, const float2& endPoint,
+void CProcedrualBinaryTree::CalcBranchEndPoints( const float2& startPoint, const float2& endPoint,
 								  	    float2& endPointA, float2& endPointB, float thickEnd)
 {
 	float2 line = float2(startPoint.x - endPoint.x, startPoint.y - endPoint.y);
@@ -60,7 +60,7 @@ void CLSystemTree::CalcBranchEndPoints( const float2& startPoint, const float2& 
 		endPoint.y + perp.y * topThickness);
 }
 
-void CLSystemTree::CalcBranchStartPoints( const float2& startPoint, const float2& endPoint,
+void CProcedrualBinaryTree::CalcBranchStartPoints( const float2& startPoint, const float2& endPoint,
 										  float2& startPointA, float2& startPointB, float thickEnd)
 {
 	float2 line = float2(startPoint.x - endPoint.x, startPoint.y - endPoint.y);
@@ -82,7 +82,7 @@ void CLSystemTree::CalcBranchStartPoints( const float2& startPoint, const float2
 		startPoint.y + perp.y * topThickness);
 }
 
-bool CLSystemTree::TestIntersection(float2 lineA1, float2 lineA2, float2 lineB1, float2 lineB2, float2& result)
+bool CProcedrualBinaryTree::TestIntersection(float2 lineA1, float2 lineA2, float2 lineB1, float2 lineB2, float2& result)
 {
 	float divisor = (lineA1.x - lineA2.x) * (lineB1.y - lineB2.y) 
 				  - (lineA1.y - lineA2.y) * (lineB1.x - lineB2.x);
@@ -103,7 +103,7 @@ bool CLSystemTree::TestIntersection(float2 lineA1, float2 lineA2, float2 lineB1,
 	}
 }
 
-void CLSystemTree::Branch(const SBranch& last, float angle, int& depth)
+void CProcedrualBinaryTree::Branch(const SBranch& last, float angle, int& depth)
 {
 	if (depth > m_maxDepth || angle > M_PI - m_maxBranchAngle || angle < m_maxBranchAngle)
 	{
@@ -181,7 +181,7 @@ void CLSystemTree::Branch(const SBranch& last, float angle, int& depth)
 	m_vertices.push_back(rightBranch.v3);
 }
 
-void CLSystemTree::Trunk(float2 start, int& trunk)
+void CProcedrualBinaryTree::Trunk(float2 start, int& trunk)
 {
 	float fTrunkAngle = M_PI_2_F; // half pi
 	// TODO: rand() is a poor rand and something in <random> would probably be better
@@ -226,7 +226,7 @@ void CLSystemTree::Trunk(float2 start, int& trunk)
 		Trunk( trunkEnd, trunk );
 }
 
-void CLSystemTree::Generate()
+void CProcedrualBinaryTree::Generate()
 {
 	srand((int)m_seed + m_maxTrunks);
 	int depth = 0;

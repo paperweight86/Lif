@@ -1,3 +1,3 @@
 # Lif
 # Procedural Generation Library
-Currently only generates & erodes terrain (simple perlin noise & simple CA water erosion ) and 2D trees as an exe but intended to become a library for alsorts of procedural nonsense.
+Currently generates 3D/2D terrain and 2D trees. Can also erode terrain (basic water erosion). Lif_Box is an editor/test for the terrain and trees at the moment.

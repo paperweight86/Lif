@@ -21,9 +21,6 @@
     <Filter Include="Tree">
       <UniqueIdentifier>{bd4a1837-62d3-4285-8d26-92fac9660c68}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Tree\LSystem">
-      <UniqueIdentifier>{5266ba18-3208-4b3d-bbda-c426e05511e8}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Terrain\HexCellularAutomata">
       <UniqueIdentifier>{05a0d52f-7a63-44a7-bb27-460a0cadc94f}</UniqueIdentifier>
     </Filter>
@@ -62,22 +59,16 @@
     <ClInclude Include="VertexFormat.h">
       <Filter>Source Files\Formats</Filter>
     </ClInclude>
-    <ClInclude Include="HexCA.h">
-      <Filter>Terrain\HexCellularAutomata</Filter>
-    </ClInclude>
-    <ClInclude Include="HexCACell.h">
-      <Filter>Terrain\HexCellularAutomata</Filter>
-    </ClInclude>
-    <ClInclude Include="HCAErosion.h">
-      <Filter>Terrain\HexCellularAutomata</Filter>
-    </ClInclude>
-    <ClInclude Include="HCAErosionCell.h">
-      <Filter>Terrain\HexCellularAutomata</Filter>
-    </ClInclude>
     <ClInclude Include="inc\PerlinNoise.h">
       <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="inc\LSystemTree.h">
+    <ClInclude Include="inc\ProcedrualBinaryTree.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\HCAErosion.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\HCAErosionCell.h">
       <Filter>inc</Filter>
     </ClInclude>
   </ItemGroup>
@@ -103,14 +94,17 @@
     <ClCompile Include="HCAErosionCell.cpp">
       <Filter>Terrain\HexCellularAutomata</Filter>
     </ClCompile>
-    <ClCompile Include="LSystemTree.cpp">
-      <Filter>Tree\LSystem</Filter>
-    </ClCompile>
     <ClCompile Include="PerlinNoise.cpp">
       <Filter>Terrain</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcedrualBinaryTree.cpp">
+      <Filter>Tree</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\README.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\License.txt" />
   </ItemGroup>
 </Project>
