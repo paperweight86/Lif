@@ -1,0 +1,2 @@
+- Add input/output console
+- Snow on terrain

@@ -27,7 +27,9 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="Features.txt" />
     <Text Include="License.txt" />
+    <Text Include="Bugs.txt" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{FB2F2B71-09EE-4240-B50F-D256CAAE455F}</ProjectGuid>

@@ -15,5 +15,7 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="License.txt" />
+    <Text Include="Bugs.txt" />
+    <Text Include="Features.txt" />
   </ItemGroup>
 </Project>

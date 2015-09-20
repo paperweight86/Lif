@@ -639,6 +639,8 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 		xOffsetMid  += g_speedMid  * ((float)dtms.count()/1000.0f);
 		xOffsetNear += g_speedNear * ((float)dtms.count()/1000.0f);
 
+		start = std::chrono::high_resolution_clock::now();
+
 		//ypostest += 0.1f;
 		window.Update();
 
@@ -762,13 +764,13 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 				paramChanged = true;
 
 			// Right Side
-			if (doSlider(uiRenderer, _T("Far Speed"), SRect(window.Width()-220.0f, 40.0f, 200.0f, 20.0f), &g_speedFar, -0.1f, 0.1f))
+			if (doSlider(uiRenderer, _T("Far Speed"), SRect(window.Width()-220.0f, 40.0f, 200.0f, 20.0f), &g_speedFar, -10.f, 10.0f))
 				paramChanged = true;
 
-			if (doSlider(uiRenderer, _T("Mid Speed"), SRect(window.Width()-220.0f, 90.0f, 200.0f, 20.0f), &g_speedMid, -0.1f, 0.1f))
+			if (doSlider(uiRenderer, _T("Mid Speed"), SRect(window.Width()-220.0f, 90.0f, 200.0f, 20.0f), &g_speedMid, -10.0f, 10.0f))
 				paramChanged = true;
 
-			if (doSlider(uiRenderer, _T("Near Speed"), SRect(window.Width()-220.0f, 135.0f, 200.0f, 20.0f), &g_speedNear, -0.1f, 0.1f))
+			if (doSlider(uiRenderer, _T("Near Speed"), SRect(window.Width()-220.0f, 135.0f, 200.0f, 20.0f), &g_speedNear, -10.0f, 10.0f))
 				paramChanged = true;
 
 			bool savePng = doButton(uiRenderer, _T("save"), SRect(20.0f, 540.0f, 100, 20.0f));
