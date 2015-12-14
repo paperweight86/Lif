@@ -7,6 +7,12 @@ namespace lif
 	class CProcedrualBinaryTree
 	{
 	private:
+		enum BranchType
+		{
+			eBranchType_Trunk,
+			eBranchType_Left,
+			eBranchType_Right
+		};
 		struct SBranch
 		{
 			float2 start;
@@ -17,6 +23,8 @@ namespace lif
 			float2 v1;
 			float2 v2;
 			float2 v3;
+			float2 center;
+			BranchType type;
 		};
 	public:
 		float m_seed;
@@ -29,11 +37,13 @@ namespace lif
 		float m_maxBranchAngle;
 		float m_interval;
 		float m_scale;
+		float m_branchThickMul;
 	private:
 		std::vector<float3> m_vertices;
 		std::vector<int>	m_leafIndexes;
+		std::vector<float>	m_leafRotations;
 	private:
-		virtual void Branch(const SBranch& last, float angle, int& depth);
+		virtual void Branch(SBranch& last, float angle, int& depth);
 		virtual void Trunk(float2 start, int& trunk);
 		virtual bool TestIntersection(float2 lineA1, float2 lineA2, float2 lineB1, float2 lineB2, float2& result);
 		virtual void CalcBranchStartPoints(const float2& startPoint, const float2& endPoint,
@@ -49,6 +59,11 @@ namespace lif
 		{ 
 			if (_tcscmp(name, _T("leaves")) == 0)
 				out = std::move(m_leafIndexes);
+		}
+		void ConsumeAuxBuffer(const tchar* name, std::vector<float>& out)
+		{
+			if (_tcscmp(name, _T("leafRotations")) == 0)
+				out = std::move(m_leafRotations);
 		}
 	};
 }

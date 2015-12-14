@@ -10,6 +10,8 @@
 #define M_PI_F M_PI_(M_PI) ## f
 #define M_PI_2_F M_PI_(M_PI_2) ## f
 
+#include "float2.h"
+
 using namespace lif;
 
 CProcedrualBinaryTree::CProcedrualBinaryTree()
@@ -32,6 +34,8 @@ CProcedrualBinaryTree::CProcedrualBinaryTree()
 	m_scale = 45.0f;
 	// The maximum absolute angle of a branch
 	m_maxBranchAngle = M_PI_F / 12.0f;
+	// Multiplied by the previous thickness to achieve a branch thickness reduction
+	m_branchThickMul = 0.75f;
 }
 
 CProcedrualBinaryTree::~CProcedrualBinaryTree()
@@ -39,7 +43,8 @@ CProcedrualBinaryTree::~CProcedrualBinaryTree()
 }
 
 void CProcedrualBinaryTree::CalcBranchEndPoints( const float2& startPoint, const float2& endPoint,
-								  	    float2& endPointA, float2& endPointB, float thickEnd)
+								  					   float2& endPointA,		 float2& endPointB, 
+													   float thickEnd )
 {
 	float2 line = float2(startPoint.x - endPoint.x, startPoint.y - endPoint.y);
 
@@ -61,7 +66,8 @@ void CProcedrualBinaryTree::CalcBranchEndPoints( const float2& startPoint, const
 }
 
 void CProcedrualBinaryTree::CalcBranchStartPoints( const float2& startPoint, const float2& endPoint,
-										  float2& startPointA, float2& startPointB, float thickEnd)
+													     float2& startPointA, float2& startPointB, 
+														 float thickEnd)
 {
 	float2 line = float2(startPoint.x - endPoint.x, startPoint.y - endPoint.y);
 
@@ -103,11 +109,28 @@ bool CProcedrualBinaryTree::TestIntersection(float2 lineA1, float2 lineA2, float
 	}
 }
 
-void CProcedrualBinaryTree::Branch(const SBranch& last, float angle, int& depth)
+void CProcedrualBinaryTree::Branch(SBranch& last, float angle, int& depth)
 {
 	if (depth > m_maxDepth || angle > M_PI - m_maxBranchAngle || angle < m_maxBranchAngle)
 	{
-		m_leafIndexes.push_back(m_vertices.size()-1);
+		if(last.type == BranchType::eBranchType_Left)
+		{
+			m_vertices.push_back(last.v2);
+			m_vertices.push_back(last.v3);
+		}
+		else if(last.type == BranchType::eBranchType_Left)
+		{
+			m_vertices.push_back(last.v3);
+			m_vertices.push_back(last.v2);
+		}
+		// here we should also write out the rotation 
+		m_leafIndexes.push_back(m_vertices.size() - 1);
+		float2 branchV = last.v0 - last.v3;
+		branchV = branchV / sqrt(pow(branchV.x,2.0f) + pow(branchV.y,2.0f));
+		float2 res = uti::dot(float2(0.0f, -1.0f), branchV);
+		float angle = acos(res.x);
+		angle = angle * 57.295779513082320876798154814105f;
+		m_leafRotations.push_back(angle);
 		return;
 	}
 
@@ -119,30 +142,47 @@ void CProcedrualBinaryTree::Branch(const SBranch& last, float angle, int& depth)
 	float thickness = std::max<float>(1.0f, powf(std::max(fdepth, 1.0f), thickPow) * m_trunkScale);
 	if (depth == 0)
 		thickPow = 1.0f;
-	float lastThickness = std::max<float>(1.0f, powf(std::max(fdepth, 1.0f), thickPow) * m_trunkScale);
+	float lastThickness = last.endThickness; 
+	//thickness = lastThickness / 2.0f;
+	float rThick = m_branchThickMul;//(float)(rand() % 1000) / 1000.0f;
+	float lThick = m_branchThickMul;//(float)(rand() % 1000) / 1000.0f;// 1.0f - rThick;
 
-	assert(thickness >= lastThickness);
+	//float ptDist = uti::dist(last.v3, last.v2);
+	//assert(fabs(ptDist - lastThickness) < 0.00001f);
+	assert(rThick*lastThickness <= lastThickness);
+	assert(lThick*lastThickness <= lastThickness);
 
 	float angleRight = (float)(rand() % 360) / 360.0f * m_interval * 2.0f;
 	float angleLeft = (float)(rand() % 360) / 360.0f * m_interval * 2.0f;
 	float scaleRnd = (float)(rand() % 100);
 	float lScale = 1.0f - powf(((float)depth / (float)m_maxDepth), m_branchPow) * (scaleRnd / 100.0f);
+	//lScale *= lScale;
 	lScale = std::max<float>(0.001f, lScale);
 	scaleRnd = (float)(rand() % 100);
 	float rScale = 1.0f - powf(((float)depth / (float)m_maxDepth), m_branchPow) * (scaleRnd / 100.0f);
+	//rScale *= rScale;
 	rScale = std::max<float>(0.001f, rScale);
 
 	rightBranch.start = leftBranch.start = last.end;
 	rightBranch.v0 = leftBranch.v0 = last.v3;
 	rightBranch.v1 = leftBranch.v1 = last.v2;
-	rightBranch.startThickness = leftBranch.startThickness = last.endThickness;
-	rightBranch.endThickness = leftBranch.endThickness = thickness;
+	rightBranch.startThickness = rThick*lastThickness;
+	rightBranch.endThickness   = rThick*lastThickness;
+	rightBranch.type = BranchType::eBranchType_Right;
+
+	leftBranch.startThickness = lThick*lastThickness;
+	leftBranch.endThickness =	lThick*lastThickness;
+	leftBranch.type = BranchType::eBranchType_Left;
 	leftBranch.end = float2( leftBranch.start.x  + cosf(angle + angleLeft) *(m_scale*lScale),
 						     leftBranch.start.y  - sinf(angle + angleLeft) *(m_scale*lScale));
 	rightBranch.end = float2(rightBranch.start.x + cosf(angle - angleRight)*(m_scale*rScale),
 						     rightBranch.start.y - sinf(angle - angleRight)*(m_scale*rScale));
-	CalcBranchEndPoints(  leftBranch.start,  leftBranch.end,  leftBranch.v3,  leftBranch.v2, thickness );
-	CalcBranchEndPoints( rightBranch.start, rightBranch.end, rightBranch.v3, rightBranch.v2, thickness );
+	CalcBranchEndPoints(  leftBranch.start,  leftBranch.end,  leftBranch.v3,  leftBranch.v2, lThick*lastThickness );
+	CalcBranchEndPoints( rightBranch.start, rightBranch.end, rightBranch.v3, rightBranch.v2, rThick*lastThickness );
+
+	//Logger.Info(_T("Target: %f"), thickness);
+	//Logger.Info(_T("Left: %f"), uti::dist(leftBranch.v3, leftBranch.v2));
+	//Logger.Info(_T("Right: %f"), uti::dist(rightBranch.v3, rightBranch.v2));
 
 	/*
 		\  L\    /  R/
@@ -153,32 +193,142 @@ void CProcedrualBinaryTree::Branch(const SBranch& last, float angle, int& depth)
 			|  T |
 			|    |
 	*/
-	float2 intersection(0.0f, 0.0f);
-	if (TestIntersection(  leftBranch.v0, 
-						   leftBranch.v2, 
-						  rightBranch.v1, 
-						  rightBranch.v3, 
-						  intersection))
-	{
-		// 0 - bottom right
-		// 1 - bottom left
-		// 2 - top left
-		// 3 - top right
-		 leftBranch.v0 = intersection;
-		rightBranch.v1 = intersection;
+
+	/*
+
+		Unfortunately the previous explaination doesn't work nicely!
+
+		The intersection actually needs to be calculated between the "root" lines and each branch end points to construct the branch
+		start points as they aren't necessarily the same.
+
+				   r2  r3
+				   |   |
+	  l3__________I|___|rI
+	  l2___________|___|
+			   lI/1|   |0
+				   |   |
+
+
+		2_______3
+		|       |
+		|       |
+		|_______|
+		1       0
+	*/
+
+	// TODO: DELAY TESSELATION!?!?!
+	// TODO: extend lines to force intersection!??!
+
+	float2 intersectionLeft(0.0f, 0.0f);
+	// previous left vs new left left
+	if( TestIntersection(leftBranch.v1, leftBranch.v2, last.v1, last.v2, intersectionLeft) )
+	{ 
+		leftBranch.v1 = intersectionLeft;
+		last.v2 = intersectionLeft;
 	}
+	else
+	{
+		Logger.Error(_T("No left vs new left left intersection"));
+	}
+
+	float2 intersectionRight(0.0f, 0.0f);
+	// previous right vs new right right
+	if (TestIntersection(rightBranch.v0, rightBranch.v3, last.v0, last.v3, intersectionRight))
+	{ 
+		rightBranch.v0 = intersectionRight;
+		last.v3 = intersectionRight;
+	}
+	else
+	{ 
+		Logger.Error(_T("No right vs new right right intersection"));
+	}
+
+	float2 intersectionTopCenter(0.0f, 0.0f);
+	// new left right vs new right left
+	if (TestIntersection(leftBranch.v0, leftBranch.v3, rightBranch.v1, rightBranch.v2, intersectionTopCenter))
+	{ 
+		leftBranch.v0 = intersectionTopCenter;
+		rightBranch.v1 = intersectionTopCenter;
+
+		leftBranch.center = intersectionTopCenter;
+		rightBranch.center = intersectionTopCenter;
+	}
+	else
+	{ 
+		Logger.Error(_T("No left vs new right left intersection"));
+	}
+
+	//if (TestIntersection(  leftBranch.v0, 
+	//					   leftBranch.v2, 
+	//					  rightBranch.v1, 
+	//					  rightBranch.v3, 
+	//					  intersection))
+	//{
+	//	/* 
+	//	   0 - bottom right
+	//	   1 - bottom left
+	//	   2 - top left
+	//	   3 - top right
+	//	  2l  3l    2r  3r
+	//	   \   \    /   /
+	//	    \   \  /   /
+	//	     \   \/ I /  
+	//	      \  /\  /
+	//	       \/  \/
+	//		  1|    |0
+	//		   |    |
+	//	*/
+	//	
+	//	//leftBranch.v0 = intersection;
+	//	//rightBranch.v1 = intersection;
+	//}
 
 	++depth;
 	int depthLeft = depth;
 	int depthRight = depth;
 
-	m_vertices.push_back(leftBranch.v2);
+	/*
+        Intersection Top Center (New Branches)
+               / \
+             /  C  \
+            2_______3
+        	| \   A |
+        	|   \   |
+        	|_B___\_|
+        	1       0
+			Last Branch
+    */
+
+	// Last A
+	//m_vertices.push_back(last.v2);
+	//m_vertices.push_back(last.v3);
+	//m_vertices.push_back(last.v0);
+	//
+	//// Last B
+	//m_vertices.push_back(last.v0);
+	//m_vertices.push_back(last.v1);
+	//m_vertices.push_back(last.v2);
+	//
+	//// Connector C
+	//m_vertices.push_back(intersectionTopCenter);
+	//m_vertices.push_back(last.v3);
+	//m_vertices.push_back(last.v2);
+
+	m_vertices.push_back(last.v2);
+	//m_vertices.push_back(last.v3);
+
+	//m_vertices.push_back(leftBranch.v2);
 	Branch(leftBranch, angle + angleLeft, depthLeft);
-	m_vertices.push_back( leftBranch.v3);
-	m_vertices.push_back(rightBranch.v1);
-	m_vertices.push_back(rightBranch.v2);
+
+	m_vertices.push_back(intersectionTopCenter);
+	//m_vertices.push_back( leftBranch.v3);
+	//m_vertices.push_back(intersection);// rightBranch.v1);
+	//m_vertices.push_back(rightBranch.v2);
 	Branch(rightBranch, angle - angleRight, depthRight);
-	m_vertices.push_back(rightBranch.v3);
+	//m_vertices.push_back(rightBranch.v3);
+
+	m_vertices.push_back(last.v3);
+	//m_vertices.push_back(last.v2);
 }
 
 void CProcedrualBinaryTree::Trunk(float2 start, int& trunk)
@@ -205,7 +355,7 @@ void CProcedrualBinaryTree::Trunk(float2 start, int& trunk)
 	CalcBranchEndPoints(float2(0.0f, 0.0f), trunkEnd, branchTrunkPos[3], branchTrunkPos[2], trunkThickness);
 
 	m_vertices.push_back(branchTrunkPos[1]);
-	m_vertices.push_back(branchTrunkPos[2]);
+	//m_vertices.push_back(branchTrunkPos[2]);
 
 	SBranch trunkBranch;
 	trunkBranch.v0 = branchTrunkPos[0];
@@ -218,7 +368,7 @@ void CProcedrualBinaryTree::Trunk(float2 start, int& trunk)
 	trunkBranch.endThickness = trunkThickness;
 	int depth = 0;
 	Branch(trunkBranch, fTrunkAngle, depth);
-	m_vertices.push_back(branchTrunkPos[3]);
+	//m_vertices.push_back(branchTrunkPos[3]);
 	m_vertices.push_back(branchTrunkPos[0]);
 
 	++trunk;

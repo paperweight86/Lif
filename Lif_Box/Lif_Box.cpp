@@ -1,8 +1,11 @@
 #include "stdafx.h"
 
 #include "WinWindow.h"
+
 #include "2DRendererFactory.h"
+
 #include "ScopedLog.h"
+#include "FileSystem.h"
 
 using namespace tod;
 
@@ -24,12 +27,16 @@ using namespace std;
 //#include "zlib.h"
 
 #include "ProcedrualBinaryTree.h"
-
 #include "PerlinNoise.h"
+#include "Leaf.h"
 
 #include "InputKeyboardKeys.h"
 
 #include "HCAErosion.h"
+
+//#define _CRTDBG_MAP_ALLOC
+//#include <stdlib.h>
+//#include <crtdbg.h>
 
 using namespace lif;
 using namespace uti;
@@ -56,7 +63,7 @@ vector<rhandle> g_tree;
 vector<float2> g_singlePolyTree;
 vector<branchRect> g_branches;
 vector<float> g_vertices;
-int   g_Seed = rand();
+r32 g_seed = rand();
 rhandle g_hBranchBrush;
 rhandle hLeafBrush;
 
@@ -73,16 +80,19 @@ i16 g_wheelDelta;
 tchar g_valueBuffer[255];
 
 const int numTrees = 1;
-rhandle* g_trees = new rhandle[numTrees];
-std::vector<int>* g_leafIndexes = new std::vector<int>[numTrees];
-std::vector<float2>* g_treeVertices = new std::vector<float2>[numTrees];
+rhandle* g_trees;
+std::vector<int>* g_leafIndexes;
+std::vector<float2>* g_treeVertices;
+std::vector<float>* g_leafRotations;
 
+// Tree params
 r32 g_branchPow = 1.0f;
-r32 g_scale = 6.0f;
+r32 g_scale = 50.0f;
 r32 g_maxBranchAngle = 0.0f;
 r32 g_thickScale = 1.0f;
 bool  g_drawLeaves = true;
 r32 g_maxDepth = 8.0f;
+r32 g_interval = M_PI / 12.0f;
 
 rhandle g_hLeaf = nullrhandle;
 
@@ -193,6 +203,8 @@ bool doToggleButton(I2DRenderer* pRenderer, const tchar* text, SRect rect, bool*
 
 bool doTextBox(I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pValue, float valueMin, float valueMax, const tchar* format = _T("%f"), bool bRound = false)
 {
+	bool changed = false;
+
 	u32 id = CREATE_UI_ID;
 
 	_stprintf_s<255>(g_valueBuffer, format, (*pValue));
@@ -221,6 +233,8 @@ bool doTextBox(I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pVa
 		//_stprintf_s<255>(g_valueBuffer, _T("%s"), str.c_str());
 		//(*pValue) = max<float>(min<float>(TSTR_TO_FLOAT(g_valueBuffer), valueMax), valueMin);
 		g_focusedTextPos = uint32_max;
+
+		changed = true;
 	}
 	else if (g_focusedUiId == id)
 	{
@@ -359,11 +373,13 @@ bool doTextBox(I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pVa
 				_stprintf_s<255>(g_valueBuffer, _T("%s"), str.c_str());
 				(*pValue) = max<float>(min<float>(TSTR_TO_FLOAT(g_valueBuffer), valueMax), valueMin);
 				g_focusedTextPos = uint32_max;
+				changed = true;
 			}
 			else if (!g_keysDown[UTI_KEYBOARD_ESCAPE] && g_keysLast[UTI_KEYBOARD_ESCAPE])
 			{
 				g_focusedUiId = 0;
 				g_focusedTextPos = uint32_max;
+				changed = true;
 			}
 		}
 	}
@@ -382,7 +398,7 @@ bool doTextBox(I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pVa
 	else
 		pRenderer->DrawTextString(g_valueBuffer, rect, g_hTextBrush);
 
-	return false;
+	return changed;
 }
 
 bool doSlider( I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pValue, float valueMin, float valueMax, bool bRound = false)
@@ -425,7 +441,8 @@ bool doSlider( I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pVa
 	pRenderer->DrawTextString(text, rect, g_hTextBrush);
 	rect.y -= rect.h;
 	//pRenderer->DrawTextString(g_valueBuffer, rect, g_hTextBrush);
-	doTextBox(pRenderer, g_valueBuffer, rect, pValue, valueMin, valueMax, _T("%f"), bRound);
+	if (doTextBox(pRenderer, g_valueBuffer, rect, pValue, valueMin, valueMax, _T("%f"), bRound))
+		didSlide = true;
 
 	return didSlide;
 }
@@ -500,7 +517,7 @@ void buildTerrain(rhandle& hTerrain, int y, float xOffset, float yOffset, int wi
 		hTerrain = pRenderer->CreateFillGeometry(g_pTerrainVerts, (uint32)xResolution + 2);
 }
 
-void buildTrees(CWinWindow window, I2DRenderer* p2dRenderer)
+void buildTrees(CWinWindow& window, I2DRenderer* p2dRenderer)
 {
 	for (int i = 0; i < numTrees; ++i)
 	{
@@ -514,10 +531,10 @@ void buildTrees(CWinWindow window, I2DRenderer* p2dRenderer)
 		tree.m_maxTrunks = 1;
 		tree.m_scale = g_scale;
 		tree.m_maxDepth = (uint8)g_maxDepth;
-		tree.m_interval = 3.14f / 7.0f;
+		tree.m_interval = g_interval;
 		tree.m_branchPow = g_branchPow;
 		tree.m_maxTrunkDev = 3.14f / 8.0f;
-		tree.m_seed = 214.0f + (float)i;
+		tree.m_seed = g_seed + (float)i;
 		tree.m_maxBranchAngle = g_maxBranchAngle;
 		tree.m_trunkScale = g_scale/6.0f*0.1f*g_thickScale;
 		tree.m_maxTrunkLen = 10.0f*g_scale/6.0f;
@@ -526,6 +543,7 @@ void buildTrees(CWinWindow window, I2DRenderer* p2dRenderer)
 		tree.ConsumeVertexBuffer(treeVerts);
 		// uses move to get leaf data
 		tree.ConsumeAuxIndexBuffer(_T("leaves"), g_leafIndexes[i]);
+		tree.ConsumeAuxBuffer(_T("leafRotations"), g_leafRotations[i]);
 		std::size_t polyVerts = treeVerts.size();
 		g_treeVertices[i].resize(polyVerts);
 		float2* verts = new float2[polyVerts];
@@ -540,7 +558,7 @@ void buildTrees(CWinWindow window, I2DRenderer* p2dRenderer)
 		if (g_trees[i] != nullrhandle)
 			p2dRenderer->DestroyResource(g_trees[i]);
 		rhandle hOnePolyTree = p2dRenderer->CreateFillGeometry(verts, (uint32)polyVerts);
-		delete verts;
+		delete [] verts;
 		g_trees[i] = hOnePolyTree;
 	}
 	// TODO: update scale don't recreate
@@ -550,6 +568,25 @@ void buildTrees(CWinWindow window, I2DRenderer* p2dRenderer)
 
 void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 {
+	Leaf leaf;
+	LeafConfig leafCfg;
+	leafCfg.branch_angle = M_PI / 20.0f;
+	leafCfg.branch_max_len = 7.0f;
+	//leafCfg.branch_count = 2.0f;
+	leafCfg.trunk_len = 30.0f;
+	leafCfg.trunk_resolution = 8;
+	//leafCfg.trunk_stem_ratio = 0.1f;
+	GenerateLeaf(&leaf, leafCfg);
+
+	rhandle leafGeo = uiRenderer->CreateFillGeometry(&leaf.geometry[0], leaf.geometry.size());
+
+	g_trees = new rhandle[numTrees];
+	for (int i = 0; i < numTrees; ++i)
+		g_trees[i] = nullrhandle;
+	g_leafIndexes = new std::vector<int>[numTrees];
+	g_treeVertices = new std::vector<float2>[numTrees];
+	g_leafRotations = new std::vector<float>[numTrees];
+
 	uiRenderer->SetRenderTarget(g_itemrt);
 	SColour col, leafCol;
 	CreateColourFromRGB(col, 0x008800FF);
@@ -559,7 +596,7 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 	CreateColourFromRGB(col, 0x49311cFF);
 	rhandle hRectFillBrush = uiRenderer->CreateBrush(col);
 	g_hBranchBrush = hRectFillBrush;
-	CreateColourFromRGB(leafCol, 0x006600AA);
+	CreateColourFromRGB(leafCol, 0x006600FF);
 	hLeafBrush = uiRenderer->CreateBrush(leafCol);
 	g_pTerrainVerts = new float2[window.Width() + 2];
 	//buildTerrain(0, 0.0f, 100.0f, window.Width(), window.Height()/2, uiRenderer);
@@ -590,10 +627,9 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 
 	SColour clearColour;
 	CreateColourFromRGB(clearColour, 0x00000000);// dark sky blue 0x175691FF
-	
-	uiRenderer->SetRenderTarget(g_itemrt);
-
 	int trunks = 0;
+
+	uiRenderer->SetRenderTarget(g_itemrt);
 	buildTrees(window, uiRenderer);
 
 	float xpostest = 0.0f;
@@ -625,11 +661,11 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 	g_speedMid  = 0.002f;
 	g_speedNear = 0.003f;
 
-	chrono::system_clock::time_point start = std::chrono::high_resolution_clock::now();
+	chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
 
 	while (!window.ShouldQuit())
 	{
-		chrono::system_clock::time_point end = std::chrono::high_resolution_clock::now();
+		chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 
 		auto dt = end - start;
 		
@@ -659,18 +695,32 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 
 		if (bDoTree)
 		{
+			r32 width = (r32)window.Width();
+			r32 share = width / (r32)numTrees;
+			r32 pos = share / 2.0f - width / 2.0f;
+
 			// TODO: now optimise for overdraw
 			for (int i = 0; i < numTrees; ++i)
 			{
-				float2 treePos = float2(xpostest + ((float)i*100.0f), 0.0f);
+				float2 treePos = float2(pos, 0.0f);
+				pos += share;
 				uiRenderer->DrawFillGeometry(g_trees[i], hRectFillBrush, treePos);
 
 				if (g_drawLeaves)
 				{
+					srand(100);
+					int j = 0;
 					for (auto leafIter = g_leafIndexes[i].begin(); leafIter != g_leafIndexes[i].end(); ++leafIter)
 					{
-						float2 pos = g_treeVertices[i][(*leafIter)];
-						uiRenderer->DrawFillGeometry(g_hLeaf, hLeafBrush, float2(pos.x + treePos.x, pos.y + treePos.y));
+						//for (int j = 0; j < g_treeVertices[i].size(); ++j)
+						//{
+							float2 pos = g_treeVertices[i][(*leafIter)];
+							//float2 pos = g_treeVertices[i][j];
+							uiRenderer->DrawFillGeometry(leafGeo, hLeafBrush, float2(pos.x + treePos.x, pos.y + treePos.y),
+																			  float2(g_scale / 50.0f, g_scale / 50.0f),
+																			  g_leafRotations[i][j]);//rand() % 180
+						//}
+						++j;
 					}
 				}
 			}
@@ -712,20 +762,27 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 				paramChanged = true;
 			if (doSlider(uiRenderer, _T("max angle"), SRect(20.0f, 130.0f, 100.0f, 20.0f), &g_maxBranchAngle, -M_PI*2.0f, M_PI*2.0f))
 				paramChanged = true;
-			if (doSlider(uiRenderer, _T("thick scale"), SRect(20.0f, 175.0f, 100.0f, 20.0f), &g_thickScale, 0.1f, 10.0f))
+			if (doSlider(uiRenderer, _T("thick scale"), SRect(20.0f, 175.0f, 100.0f, 20.0f), &g_thickScale, 0.1f, 20.0f))
 				paramChanged = true;
 			doCheckBox(uiRenderer, _T("draw leaves"), SRect(20.0f, 220.0f, 100.0f, 20.0f), &g_drawLeaves);
 			if (doSlider(uiRenderer, _T("max depth"), SRect(20.0f, 265.0f, 100.0f, 20.0f), &g_maxDepth, 1.0f, 20.0f))
+				paramChanged = true;
+			if (doSlider(uiRenderer, _T("seed"), SRect(20.0f, 310.0f, 100.0f, 20.0f), &g_seed, 0.0f, 100000.0f, true))
+				paramChanged = true;
+			if (doSlider(uiRenderer, _T("interval"), SRect(20.0f, 355.0f, 100.0f, 20.0f), &g_interval, -M_PI, M_PI))
 				paramChanged = true;
 			if (paramChanged)
 			{
 				buildTrees(window, uiRenderer);
 			}
-			bool savePng = doButton(uiRenderer, _T("save"), SRect(20.0f, 310.0f, 100, 20.0f));
+			bool savePng = doButton(uiRenderer, _T("save png"), SRect(20.0f, 400.0f, 100, 20.0f));
 			if (savePng)
 			{
-				uiRenderer->SavePngImage(g_itemrt);
-				Logger.Info(_T("Saved image to C:\\Output.png"));
+				tchar exeFolder[260];
+				uti::getExecutableFolderPath(exeFolder, 260);
+				_stprintf_s<260>(exeFolder, _T("%s%s"), exeFolder, _T("\\tree.png"));
+				if (uiRenderer->SavePngImage(g_itemrt, exeFolder))
+					Logger.Info(_T("Saved image to %s"), exeFolder);
 			}
 		}
 		else if (bDoTerrain)
@@ -776,8 +833,11 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 			bool savePng = doButton(uiRenderer, _T("save"), SRect(20.0f, 540.0f, 100, 20.0f));
 			if (savePng)
 			{
-				uiRenderer->SavePngImage(g_itemrt);
-				Logger.Info(_T("Saved image to C:\\Output.png"));
+				tchar exeFolder[260];
+				uti::getExecutableFolderPath(exeFolder, 260);
+				_stprintf_s<260>(exeFolder, _T("%s%s"), exeFolder, _T("\\terrain.png"));
+				if(uiRenderer->SavePngImage(g_itemrt, exeFolder))
+					Logger.Info(_T("Saved image to %s"), exeFolder);
 			}
 		}
 		uiRenderer->EndDraw();
@@ -797,17 +857,36 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 		uiRenderer->DestroyResource(g_trees[i]);
 		g_trees[i] = nullrhandle;
 	}
+
+	delete[] g_trees;
+
 	uiRenderer->DestroyResource(g_hLeaf);
 	uiRenderer->DestroyResource(g_hBranchBrush);
 	uiRenderer->DestroyResource(hLeafBrush);
+
+	uiRenderer->DestroyResource(g_hTerrain);
+	uiRenderer->DestroyResource(g_farTerrain);
+	uiRenderer->DestroyResource(g_midTerrain);
+	uiRenderer->DestroyResource(g_nearTerrain);
+
+	for (int i = 0; i < numTrees; ++i)
+	{
+		g_treeVertices[i].clear();
+		g_leafIndexes[i].clear();
+	}
+	delete[] g_treeVertices;
+	delete[] g_leafIndexes;
+	delete[] g_leafRotations;
+
+	delete[] g_pTerrainVerts;
 }
 
 int lif_main()
 {
 	CreateScopedLogger();
 
-	uint32 width = 900;
-	uint32 height = 600;
+	uint32 width = 1500;
+	uint32 height = 1300;
 
 	memset(g_keysDown, 0, sizeof(g_keysDown)*sizeof(bool));
 	memset(g_keysLast, 0, sizeof(g_keysLast)*sizeof(bool));
@@ -827,7 +906,7 @@ int lif_main()
 		Logger.Error(_T("Fatal: Failed to initialise UI renderer"));
 		return -1;
 	}
-
+	
 	g_winrt = uiRenderer->CreateRenderTarget(/*present:*/true);//RenderTargetType_Window);
 	g_itemrt = uiRenderer->CreateRenderTarget(/*present:*/false);//RenderTargetType_Texture);
 
@@ -1033,13 +1112,16 @@ void DoErosion(CWinWindow& window, I2DRenderer* uiRenderer)
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	for (int i = 0; i < numTrees; ++i)
-		g_trees[i] = nullrhandle;
-	int result = lif_main();
+	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+
+	int result = 0;
+	result = lif_main();
 
 #ifndef NDEBUG
 	system("PAUSE");
 #endif
+
+	//_CrtDumpMemoryLeaks();
 
 	return result;
 }

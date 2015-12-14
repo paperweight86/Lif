@@ -71,6 +71,9 @@
     <ClInclude Include="inc\HCAErosionCell.h">
       <Filter>inc</Filter>
     </ClInclude>
+    <ClInclude Include="inc\Leaf.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -99,6 +102,9 @@
     </ClCompile>
     <ClCompile Include="ProcedrualBinaryTree.cpp">
       <Filter>Tree</Filter>
+    </ClCompile>
+    <ClCompile Include="inc\Leaf.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
