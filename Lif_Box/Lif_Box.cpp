@@ -83,7 +83,8 @@ const int numTrees = 1;
 rhandle* g_trees;
 std::vector<int>* g_leafIndexes;
 std::vector<float2>* g_treeVertices;
-std::vector<float>* g_leafRotations;
+std::vector<float>*  g_leafRotations;
+std::vector<float2>* g_debugPositions;
 
 // Tree params
 r32 g_branchPow = 1.0f;
@@ -544,6 +545,7 @@ void buildTrees(CWinWindow& window, I2DRenderer* p2dRenderer)
 		// uses move to get leaf data
 		tree.ConsumeAuxIndexBuffer(_T("leaves"), g_leafIndexes[i]);
 		tree.ConsumeAuxBuffer(_T("leafRotations"), g_leafRotations[i]);
+		tree.ConsumeAuxBuffer(_T("debugPositions"), g_debugPositions[i]);
 		std::size_t polyVerts = treeVerts.size();
 		g_treeVertices[i].resize(polyVerts);
 		float2* verts = new float2[polyVerts];
@@ -586,6 +588,7 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 	g_leafIndexes = new std::vector<int>[numTrees];
 	g_treeVertices = new std::vector<float2>[numTrees];
 	g_leafRotations = new std::vector<float>[numTrees];
+	g_debugPositions = new std::vector<float2>[numTrees];
 
 	uiRenderer->SetRenderTarget(g_itemrt);
 	SColour col, leafCol;
@@ -716,10 +719,17 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 						//{
 							float2 pos = g_treeVertices[i][(*leafIter)];
 							//float2 pos = g_treeVertices[i][j];
-							uiRenderer->DrawFillGeometry(leafGeo, hLeafBrush, float2(pos.x + treePos.x, pos.y + treePos.y),
-																			  float2(g_scale / 50.0f, g_scale / 50.0f),
-																			  g_leafRotations[i][j]);//rand() % 180
+							//uiRenderer->DrawFillGeometry(leafGeo, hLeafBrush, float2(pos.x + treePos.x, pos.y + treePos.y),
+							//												  float2(g_scale / 50.0f, g_scale / 50.0f),
+							//												  g_leafRotations[i][j]);//rand() % 180
 						//}
+							float2 debugPos = g_debugPositions[i][j];
+							uiRenderer->DrawFillGeometry(leafGeo, hLeafBrush,
+								float2(debugPos.x + treePos.x + (float)(window.Width() / 2), 
+									   debugPos.y + treePos.y + (float)window.Height()),
+								float2(1.00f, 1.00f),
+								g_leafRotations[i][j]);
+							
 						++j;
 					}
 				}
@@ -877,6 +887,7 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 	delete[] g_treeVertices;
 	delete[] g_leafIndexes;
 	delete[] g_leafRotations;
+	delete[] g_debugPositions;
 
 	delete[] g_pTerrainVerts;
 }

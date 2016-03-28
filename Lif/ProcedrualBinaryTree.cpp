@@ -11,6 +11,7 @@
 #define M_PI_2_F M_PI_(M_PI_2) ## f
 
 #include "float2.h"
+#include "float3.h"
 
 using namespace lif;
 
@@ -109,29 +110,36 @@ bool CProcedrualBinaryTree::TestIntersection(float2 lineA1, float2 lineA2, float
 	}
 }
 
-void CProcedrualBinaryTree::Branch(SBranch& last, float angle, int& depth)
+bool CProcedrualBinaryTree::Branch(SBranch& last, float angle, int& depth)
 {
 	if (depth > m_maxDepth || angle > M_PI - m_maxBranchAngle || angle < m_maxBranchAngle)
 	{
-		if(last.type == BranchType::eBranchType_Left)
+		//if(last.type == BranchType::eBranchType_Right)
+		//{
+		//	m_vertices.push_back(last.v2);
+		//	m_vertices.push_back(last.v3);
+		//}
+		//else if(last.type == BranchType::eBranchType_Left)
 		{
-			m_vertices.push_back(last.v2);
-			m_vertices.push_back(last.v3);
-		}
-		else if(last.type == BranchType::eBranchType_Left)
-		{
-			m_vertices.push_back(last.v3);
-			m_vertices.push_back(last.v2);
+			//m_vertices.push_back(last.v2);
+			//m_vertices.push_back(last.v3);
+			//m_vertices.push_back(last.center);
 		}
 		// here we should also write out the rotation 
-		m_leafIndexes.push_back(m_vertices.size() - 1);
-		float2 branchV = last.v0 - last.v3;
-		branchV = branchV / sqrt(pow(branchV.x,2.0f) + pow(branchV.y,2.0f));
-		float2 res = uti::dot(float2(0.0f, -1.0f), branchV);
-		float angle = acos(res.x);
-		angle = angle * 57.295779513082320876798154814105f;
-		m_leafRotations.push_back(angle);
-		return;
+
+		// TODO: Move this to the section which figures out if we branched to remove double leaves and other shit
+
+		//m_leafIndexes.push_back(m_vertices.size() - 1);
+		//float2 branchV = last.v0 - last.v3;
+		//branchV = branchV / sqrt(pow(branchV.x,2.0f) + pow(branchV.y,2.0f));
+		//float2 res = uti::dot(float2(0.0f, -1.0f), branchV);
+		//float angle = acos(res.x);
+		//angle = angle * 57.295779513082320876798154814105f - 180.0f;
+		//
+		//m_leafRotations.push_back(angle);
+		//m_debugPositions.push_back(last.v0);
+
+		return false;
 	}
 
 	SBranch leftBranch, rightBranch;
@@ -287,48 +295,61 @@ void CProcedrualBinaryTree::Branch(SBranch& last, float angle, int& depth)
 	int depthLeft = depth;
 	int depthRight = depth;
 
-	/*
-        Intersection Top Center (New Branches)
-               / \
-             /  C  \
-            2_______3
-        	| \   A |
-        	|   \   |
-        	|_B___\_|
-        	1       0
-			Last Branch
-    */
-
-	// Last A
-	//m_vertices.push_back(last.v2);
-	//m_vertices.push_back(last.v3);
-	//m_vertices.push_back(last.v0);
-	//
-	//// Last B
-	//m_vertices.push_back(last.v0);
-	//m_vertices.push_back(last.v1);
-	//m_vertices.push_back(last.v2);
-	//
-	//// Connector C
-	//m_vertices.push_back(intersectionTopCenter);
-	//m_vertices.push_back(last.v3);
-	//m_vertices.push_back(last.v2);
-
 	m_vertices.push_back(last.v2);
-	//m_vertices.push_back(last.v3);
+	
+	bool right = true;
+	bool left = true;
 
-	//m_vertices.push_back(leftBranch.v2);
-	Branch(leftBranch, angle + angleLeft, depthLeft);
+	if (Branch(leftBranch, angle + angleLeft, depthLeft))
+		m_vertices.push_back(intersectionTopCenter);
+	else
+		left = false;
+	
+	if (Branch(rightBranch, angle - angleRight, depthRight))
+		m_vertices.push_back(last.v3);
+	else
+		right = false;
 
-	m_vertices.push_back(intersectionTopCenter);
-	//m_vertices.push_back( leftBranch.v3);
-	//m_vertices.push_back(intersection);// rightBranch.v1);
-	//m_vertices.push_back(rightBranch.v2);
-	Branch(rightBranch, angle - angleRight, depthRight);
-	//m_vertices.push_back(rightBranch.v3);
+	if (!left && !right)
+	{
+		m_vertices.push_back(last.v2);
+		m_vertices.push_back(last.v3);
 
-	m_vertices.push_back(last.v3);
-	//m_vertices.push_back(last.v2);
+		m_leafIndexes.push_back(m_vertices.size() - 1);
+		float2 branchV = last.v0 - last.v3;
+		branchV = branchV / sqrt(pow(branchV.x, 2.0f) + pow(branchV.y, 2.0f));
+		float2 res = uti::dot(float2(0.0f, -1.0f), branchV);
+		float angle = acos(res.x);
+		angle = angle * 57.295779513082320876798154814105f - 180.0f;
+
+		float2 leafPos = last.v3 - last.v2;
+		float distance = sqrt(pow(leafPos.x, 2.0f) + pow(leafPos.y, 2.0f));
+		leafPos = leafPos / distance;
+
+		float3 p0 = float3(leafPos);
+		float3 p1 = float3(0.0f, 0.0f, 1.0f);
+
+		leafPos = leafPos * (distance / 2.0f);
+
+		float3 p2 = uti::cross(p1, p0);
+		float2 p2v2 = float2(p2.x, p2.y);
+		res = uti::dot(p2v2, float2(0.0f, -1.0f));
+		float angle2 = acosf(res.x);
+		angle2 = angle2 * 57.295779513082320876798154814105f;
+
+		m_leafRotations.push_back(angle2);
+		m_debugPositions.push_back(last.v2+leafPos+(p2v2*2.0f));
+	}
+	else if (!left)
+	{
+		m_vertices.push_back(last.v3);
+	}
+	else if (!right)
+	{
+		m_vertices.push_back(last.v3);
+	}
+
+	return true;
 }
 
 void CProcedrualBinaryTree::Trunk(float2 start, int& trunk)

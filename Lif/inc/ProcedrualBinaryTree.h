@@ -42,8 +42,9 @@ namespace lif
 		std::vector<float3> m_vertices;
 		std::vector<int>	m_leafIndexes;
 		std::vector<float>	m_leafRotations;
+		std::vector<float2>	m_debugPositions;
 	private:
-		virtual void Branch(SBranch& last, float angle, int& depth);
+		virtual bool Branch(SBranch& last, float angle, int& depth);
 		virtual void Trunk(float2 start, int& trunk);
 		virtual bool TestIntersection(float2 lineA1, float2 lineA2, float2 lineB1, float2 lineB2, float2& result);
 		virtual void CalcBranchStartPoints(const float2& startPoint, const float2& endPoint,
@@ -64,6 +65,11 @@ namespace lif
 		{
 			if (_tcscmp(name, _T("leafRotations")) == 0)
 				out = std::move(m_leafRotations);
+		}
+		void ConsumeAuxBuffer(const tchar* name, std::vector<float2>& out)
+		{
+			if (_tcscmp(name, _T("debugPositions")) == 0)
+				out = std::move(m_debugPositions);
 		}
 	};
 }
