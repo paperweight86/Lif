@@ -1130,7 +1130,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	result = lif_main();
 
 #ifndef NDEBUG
-	system("PAUSE");
+	//system("PAUSE");
 #endif
 
 	//_CrtDumpMemoryLeaks();

@@ -266,31 +266,6 @@ bool CProcedrualBinaryTree::Branch(SBranch& last, float angle, int& depth)
 		Logger.Error(_T("No left vs new right left intersection"));
 	}
 
-	//if (TestIntersection(  leftBranch.v0, 
-	//					   leftBranch.v2, 
-	//					  rightBranch.v1, 
-	//					  rightBranch.v3, 
-	//					  intersection))
-	//{
-	//	/* 
-	//	   0 - bottom right
-	//	   1 - bottom left
-	//	   2 - top left
-	//	   3 - top right
-	//	  2l  3l    2r  3r
-	//	   \   \    /   /
-	//	    \   \  /   /
-	//	     \   \/ I /  
-	//	      \  /\  /
-	//	       \/  \/
-	//		  1|    |0
-	//		   |    |
-	//	*/
-	//	
-	//	//leftBranch.v0 = intersection;
-	//	//rightBranch.v1 = intersection;
-	//}
-
 	++depth;
 	int depthLeft = depth;
 	int depthRight = depth;
@@ -316,29 +291,18 @@ bool CProcedrualBinaryTree::Branch(SBranch& last, float angle, int& depth)
 		m_vertices.push_back(last.v3);
 
 		m_leafIndexes.push_back(m_vertices.size() - 1);
-		float2 branchV = last.v0 - last.v3;
-		branchV = branchV / sqrt(pow(branchV.x, 2.0f) + pow(branchV.y, 2.0f));
-		float2 res = uti::dot(float2(0.0f, 1.0f), branchV);
-		float angle = acos(res.x);
+
+		float2 halfV = (last.v3 - last.v2) / 2.0f;
+		float2 toLeaf = (last.v1 - last.v2);
+		float len = sqrtf(uti::dot(toLeaf, toLeaf).x);
+		toLeaf = toLeaf / len;
+		angle = acosf(uti::dot(float2(1.0f, 0.0f), toLeaf).x) - M_PI_2;
+		//TODO: This also works but it's slower?
+		//angle = atan2f(toLeaf.y, toLeaf.x) - M_PI_2;
 		angle = angle * 57.295779513082320876798154814105f;
 
-		float2 leafPos = last.v3 - last.v2;
-		float distance = sqrt(uti::dot(leafPos,leafPos).x);
-		leafPos = leafPos / distance;
-
-		float3 p0 = float3(leafPos);
-		float3 p1 = float3(0.0f, 0.0f, 1.0f);
-
-		leafPos = leafPos * (distance / 2.0f);
-
-		float3 p2 = uti::cross(p1, p0);
-		float2 p2v2 = float2(p2.x, p2.y);
-		res = uti::dot(p2v2, float2(0.0f, -1.0f));
-		float angle2 = acosf(res.x);
-		angle2 = angle2 * 57.295779513082320876798154814105f;
-
+		m_debugPositions.push_back(last.v2 + halfV);
 		m_leafRotations.push_back(angle);
-		m_debugPositions.push_back(last.v2+leafPos+(p2v2*2.0f));
 	}
 	else if (!left)
 	{
