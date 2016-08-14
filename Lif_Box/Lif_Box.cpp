@@ -77,7 +77,7 @@ bool g_mButton;
 bool g_lButton;
 i16 g_wheelDelta;
 
-tchar g_valueBuffer[255];
+wchar_t g_valueBuffer[255];
 
 const int numTrees = 1;
 rhandle* g_trees;
@@ -137,14 +137,14 @@ u32 g_nextUiId;
 u32 g_focusedUiId;
 u32 g_focusedTextPos = uint32_max;
 #define CREATE_UI_ID ++g_nextUiId
-tchar g_focusValueBuffer[255];
+wchar_t g_focusValueBuffer[255];
 
 bool g_keysDown[0xFF];
 bool g_keysLast[0xFF];
 
 void DoErosion(CWinWindow& window, I2DRenderer* uiRenderer);
 
-bool doButton(I2DRenderer* pRenderer, const tchar* text, SRect rect)
+bool doButton(I2DRenderer* pRenderer, const wchar_t* text, SRect rect)
 {
 	bool isDown = g_rButtonUp && (g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h);
 	SColour col;
@@ -170,7 +170,7 @@ bool doButton(I2DRenderer* pRenderer, const tchar* text, SRect rect)
 	return isDown;
 }
 
-bool doToggleButton(I2DRenderer* pRenderer, const tchar* text, SRect rect, bool* toggle )
+bool doToggleButton(I2DRenderer* pRenderer, const wchar_t* text, SRect rect, bool* toggle )
 {
 	bool isDown = g_rButtonUp && (g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h);
 	SColour col;
@@ -202,29 +202,29 @@ bool doToggleButton(I2DRenderer* pRenderer, const tchar* text, SRect rect, bool*
 	return isDown;
 }
 
-bool doTextBox(I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pValue, float valueMin, float valueMax, const tchar* format = _T("%f"), bool bRound = false)
+bool doTextBox(I2DRenderer* pRenderer, const wchar_t* text, SRect rect, float* pValue, float valueMin, float valueMax, const wchar_t* format = L"%f", bool bRound = false)
 {
 	bool changed = false;
 
 	u32 id = CREATE_UI_ID;
 
-	_stprintf_s<255>(g_valueBuffer, format, (*pValue));
+	swprintf_s<255>(g_valueBuffer, format, (*pValue));
 
 	bool mouseOver = g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h;
 	if (g_rButtonUp && mouseOver && g_focusedUiId != id)
 	{
 		g_focusedUiId = id;
 		g_focusedTextPos = uint32_max;
-		_stprintf_s<255>(g_focusValueBuffer, _T("%s"), g_valueBuffer);
-		auto valueLen = _tcslen(g_focusValueBuffer);
+		swprintf_s<255>(g_focusValueBuffer, L"%s", g_valueBuffer);
+		auto valueLen = wcslen(g_focusValueBuffer);
 		if (g_focusedTextPos >= valueLen)
 			g_focusedTextPos = (u32)max<size_t>(valueLen, 0);
-		tstring str = g_focusValueBuffer;
-		tstring first = str.substr(0, g_focusedTextPos);
-		tstring last = _T("");
+		wstring str = g_focusValueBuffer;
+		wstring first = str.substr(0, g_focusedTextPos);
+		wstring last = L"";
 		if (valueLen != g_focusedTextPos)
 			last = str.substr(g_focusedTextPos, valueLen - g_focusedTextPos);
-		_stprintf_s<255>(g_focusValueBuffer, _T("%s|%s"), first.c_str(), last.c_str());
+		swprintf_s<255>(g_focusValueBuffer, L"%s|%s", first.c_str(), last.c_str());
 	}
 	else if (g_focusedUiId == id && g_rButtonUp && !mouseOver)
 	{
@@ -241,17 +241,17 @@ bool doTextBox(I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pVa
 	{
 		if (!g_keysDown[UTI_KEYBOARD_RIGHT] && g_keysLast[UTI_KEYBOARD_RIGHT])
 		{
-			if (g_focusedTextPos != _tcslen(g_focusValueBuffer) - 1)
+			if (g_focusedTextPos != wcslen(g_focusValueBuffer) - 1)
 			{
 				g_focusedTextPos++;
-				auto valueLen = _tcslen(g_focusValueBuffer);
+				auto valueLen = wcslen(g_focusValueBuffer);
 				g_focusedTextPos = (u32)min<size_t>(max<size_t>(g_focusedTextPos, 0), valueLen);
-				tstring str = g_focusValueBuffer;
-				str = str.replace(g_focusedTextPos - 1, 1, _T(""));
-				tstring first = str.substr(0, g_focusedTextPos);
-				tstring last = _T("");
+				wstring str = g_focusValueBuffer;
+				str = str.replace(g_focusedTextPos - 1, 1, L"");
+				wstring first = str.substr(0, g_focusedTextPos);
+				wstring last = L"";
 				last = str.substr(g_focusedTextPos, valueLen - g_focusedTextPos);
-				_stprintf_s<255>(g_focusValueBuffer, _T("%s|%s"), first.c_str(), last.c_str());
+				swprintf_s<255>(g_focusValueBuffer, L"%s|%s", first.c_str(), last.c_str());
 			}
 		}
 		else if (!g_keysDown[UTI_KEYBOARD_LEFT] && g_keysLast[UTI_KEYBOARD_LEFT])
@@ -259,40 +259,40 @@ bool doTextBox(I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pVa
 			if (g_focusedTextPos != 0)
 			{
 				g_focusedTextPos--;
-				auto valueLen = _tcslen(g_focusValueBuffer);
+				auto valueLen = wcslen(g_focusValueBuffer);
 				g_focusedTextPos = (u32)min<size_t>(max<size_t>(g_focusedTextPos, 0), valueLen);
-				tstring str = g_focusValueBuffer;
-				str = str.replace(g_focusedTextPos + 1, 1, _T(""));
-				tstring first = str.substr(0, g_focusedTextPos);
-				tstring last = _T("");
+				wstring str = g_focusValueBuffer;
+				str = str.replace(g_focusedTextPos + 1, 1, L"");
+				wstring first = str.substr(0, g_focusedTextPos);
+				wstring last = L"";
 				last = str.substr(g_focusedTextPos, valueLen - g_focusedTextPos);
-				_stprintf_s<255>(g_focusValueBuffer, _T("%s|%s"), first.c_str(), last.c_str());
+				swprintf_s<255>(g_focusValueBuffer, L"%s|%s", first.c_str(), last.c_str());
 			}
 		}
 		else if (!g_keysDown[UTI_KEYBOARD_BACK] && g_keysLast[UTI_KEYBOARD_BACK])
 		{
 			if (g_focusedTextPos > 0)
 			{
-				tstring str = g_focusValueBuffer;
-				str = str.replace(g_focusedTextPos, 1, _T(""));
-				str = str.replace(g_focusedTextPos - 1, 1, _T(""));
+				wstring str = g_focusValueBuffer;
+				str = str.replace(g_focusedTextPos, 1, L"");
+				str = str.replace(g_focusedTextPos - 1, 1, L"");
 				
 				auto valueLen = str.length();
 				g_focusedTextPos--;
 				g_focusedTextPos = (u32)min<size_t>(max<size_t>(g_focusedTextPos, 0), valueLen);
-				tstring first = str.substr(0, g_focusedTextPos);
-				tstring last = _T("");
+				wstring first = str.substr(0, g_focusedTextPos);
+				wstring last = L"";
 				if (valueLen != g_focusedTextPos)
 					last = str.substr(g_focusedTextPos, valueLen - g_focusedTextPos);
-				_stprintf_s<255>(g_focusValueBuffer, _T("%s|%s"), first.c_str(), last.c_str());
+				  swprintf_s<255>(g_focusValueBuffer, L"%s|%s", first.c_str(), last.c_str());
 			}
 		}
 		else
 		{
-			tstring str = g_focusValueBuffer;
+			wstring str = g_focusValueBuffer;
 			bool num = false;
 			char keyCode = 0;
-			if (str.substr(0, 2) != _T("|-") || g_focusedTextPos != 0)
+			if (str.substr(0, 2) != L"|-" || g_focusedTextPos != 0)
 			{
 				for (keyCode = '0'; keyCode <= '9'; ++keyCode)
 				{
@@ -305,74 +305,74 @@ bool doTextBox(I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pVa
 			}
 			if (num)
 			{
-				tstring str = g_focusValueBuffer;
-				str = str.replace(g_focusedTextPos, 1, _T(""));
+				wstring str = g_focusValueBuffer;
+				str = str.replace(g_focusedTextPos, 1, L"");
 
 				auto valueLen = str.length() + 1;
 				g_focusedTextPos++;
 				g_focusedTextPos = (u32)min<size_t>(max<size_t>(g_focusedTextPos, 0), valueLen);
-				tstring first = str.substr(0, g_focusedTextPos-1);
+				wstring first = str.substr(0, g_focusedTextPos-1);
 				first.push_back((wchar_t)keyCode);
-				tstring last;
+				wstring last;
 				if (valueLen != g_focusedTextPos-1)
 					last = str.substr(g_focusedTextPos-1, valueLen - g_focusedTextPos);
-				_stprintf_s<255>(g_focusValueBuffer, _T("%s|%s"), first.c_str(), last.c_str());
+				 swprintf_s<255>(g_focusValueBuffer, L"%s|%s", first.c_str(), last.c_str());
 			}
 			else if (!g_keysDown[UTI_KEYBOARD_OEM_PERIOD] && g_keysLast[UTI_KEYBOARD_OEM_PERIOD])
 			{
-				if (str.find(_T(".")) == -1)
+				if (str.find(L".") == -1)
 				{
-					str = str.replace(g_focusedTextPos, 1, _T(""));
+					str = str.replace(g_focusedTextPos, 1, L"");
 
 					auto valueLen = str.length() + 1;
 					g_focusedTextPos++;
 					g_focusedTextPos = (u32)min<size_t>(max<size_t>(g_focusedTextPos, 0), valueLen);
-					tstring first = str.substr(0, g_focusedTextPos - 1);
-					first.append(_T("."));
-					tstring last;
+					wstring first = str.substr(0, g_focusedTextPos - 1);
+					first.append(L".");
+					wstring last;
 					if (valueLen != g_focusedTextPos - 1)
 						last = str.substr(g_focusedTextPos - 1, valueLen - g_focusedTextPos);
-					_stprintf_s<255>(g_focusValueBuffer, _T("%s|%s"), first.c_str(), last.c_str());
+				  swprintf_s<255>(g_focusValueBuffer, L"%s|%s", first.c_str(), last.c_str());
 				}
 			}
 			else if (!g_keysDown[UTI_KEYBOARD_OEM_MINUS] && g_keysLast[UTI_KEYBOARD_OEM_MINUS])
 			{
-				if (str.substr(0,2) != _T("|-") && g_focusedTextPos == 0)
+				if (str.substr(0,2) != L"|-" && g_focusedTextPos == 0)
 				{
-					str = str.replace(g_focusedTextPos, 1, _T(""));
+					str = str.replace(g_focusedTextPos, 1, L"");
 
 					auto valueLen = str.length() + 1;
 					g_focusedTextPos++;
 					g_focusedTextPos = (u32)min<size_t>(max<size_t>(g_focusedTextPos, 0), valueLen);
-					tstring first = str.substr(0, g_focusedTextPos - 1);
-					first.insert(0,_T("-"));
-					tstring last;
+					wstring first = str.substr(0, g_focusedTextPos - 1);
+					first.insert(0, L"-");
+					wstring last;
 					if (valueLen != g_focusedTextPos - 1)
 						last = str.substr(g_focusedTextPos - 1, valueLen - g_focusedTextPos);
-					_stprintf_s<255>(g_focusValueBuffer, _T("%s|%s"), first.c_str(), last.c_str());
+					swprintf_s<255>(g_focusValueBuffer, L"%s|%s", first.c_str(), last.c_str());
 				}
 			}
 			else if (!g_keysDown[UTI_KEYBOARD_HOME] && g_keysLast[UTI_KEYBOARD_HOME])
 			{
-				str = str.replace(g_focusedTextPos, 1, _T(""));
+				str = str.replace(g_focusedTextPos, 1, L"");
 				auto valueLen = str.length();
 				g_focusedTextPos = 0;
-				_stprintf_s<255>(g_focusValueBuffer, _T("|%s"), str.c_str());
+				swprintf_s<255>(g_focusValueBuffer, L"|%s", str.c_str());
 			}
 			else if (!g_keysDown[UTI_KEYBOARD_END] && g_keysLast[UTI_KEYBOARD_END])
 			{
-				str = str.replace(g_focusedTextPos, 1, _T(""));
+				str = str.replace(g_focusedTextPos, 1, L"");
 				auto valueLen = str.length();
 				g_focusedTextPos = valueLen;
-				_stprintf_s<255>(g_focusValueBuffer, _T("%s|"), str.c_str());
+				swprintf_s<255>(g_focusValueBuffer, L"%s|", str.c_str());
 			}
 			else if (!g_keysDown[UTI_KEYBOARD_RETURN] && g_keysLast[UTI_KEYBOARD_RETURN])
 			{
 				g_focusedUiId = 0;
-				tstring str = g_focusValueBuffer;
-				str = str.replace(g_focusedTextPos, 1, _T(""));
-				_stprintf_s<255>(g_valueBuffer, _T("%s"), str.c_str());
-				(*pValue) = max<float>(min<float>(TSTR_TO_FLOAT(g_valueBuffer), valueMax), valueMin);
+				wstring str = g_focusValueBuffer;
+				str = str.replace(g_focusedTextPos, 1, L"");
+				swprintf_s<255>(g_valueBuffer, L"%s", str.c_str());
+				(*pValue) = max<float>(min<float>(_wtof(g_valueBuffer), valueMax), valueMin);
 				g_focusedTextPos = uint32_max;
 				changed = true;
 			}
@@ -402,13 +402,13 @@ bool doTextBox(I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pVa
 	return changed;
 }
 
-bool doSlider( I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pValue, float valueMin, float valueMax, bool bRound = false)
+bool doSlider( I2DRenderer* pRenderer, const wchar_t* text, SRect rect, float* pValue, float valueMin, float valueMax, bool bRound = false)
 {
 	bool didSlide = false;
 	if (bRound)
-		_stprintf_s<255>(g_valueBuffer, _T("%d"), (int)(*pValue));
+		swprintf_s<255>(g_valueBuffer, L"%d", (int)(*pValue));
 	else
-		_stprintf_s<255>(g_valueBuffer, _T("%f"), (*pValue));
+		swprintf_s<255>(g_valueBuffer, L"%f", (*pValue));
 	float percentage = 0.0f;
 	float markerWidth = 2.0f;
 	if (g_rButton && (g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h))
@@ -442,13 +442,13 @@ bool doSlider( I2DRenderer* pRenderer, const tchar* text, SRect rect, float* pVa
 	pRenderer->DrawTextString(text, rect, g_hTextBrush);
 	rect.y -= rect.h;
 	//pRenderer->DrawTextString(g_valueBuffer, rect, g_hTextBrush);
-	if (doTextBox(pRenderer, g_valueBuffer, rect, pValue, valueMin, valueMax, _T("%f"), bRound))
+	if (doTextBox(pRenderer, g_valueBuffer, rect, pValue, valueMin, valueMax, L"%f", bRound))
 		didSlide = true;
 
 	return didSlide;
 }
 
-bool doCheckBox(I2DRenderer* pRenderer, const tchar* text, SRect rect, bool* pValue)
+bool doCheckBox(I2DRenderer* pRenderer, const wchar_t* text, SRect rect, bool* pValue)
 {
 	if (g_rButtonUp && g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h)
 	{
@@ -717,7 +717,7 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 					{
 						//for (int j = 0; j < g_treeVertices[i].size(); ++j)
 						//{
-							float2 pos = g_treeVertices[i][(*leafIter)];
+							//float2 pos = g_treeVertices[i][(*leafIter)];
 							//float2 pos = g_treeVertices[i][j];
 							//uiRenderer->DrawFillGeometry(leafGeo, hLeafBrush, float2(pos.x + treePos.x, pos.y + treePos.y),
 							//												  float2(g_scale / 50.0f, g_scale / 50.0f),
@@ -756,96 +756,97 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 		uiRenderer->DrawBitmap(rtImg, float2(), float2(1.0, 1.0));
 		uiRenderer->DestroyResource(rtImg);
 
-		if (doToggleButton(uiRenderer, _T("Tree"), SRect(0.0f, 0.0f, 100.0f, 20.0f), &bDoTree))
+		if (doToggleButton(uiRenderer, L"Tree", SRect(0.0f, 0.0f, 100.0f, 20.0f), &bDoTree))
 			if (bDoTerrain)
 				bDoTerrain = false;
-		if (doToggleButton(uiRenderer, _T("Terrain"), SRect(103.0f, 0.0f, 100.0f, 20.0f), &bDoTerrain))
+		if (doToggleButton(uiRenderer, L"Terrain", SRect(103.0f, 0.0f, 100.0f, 20.0f), &bDoTerrain))
 			if (bDoTree)
 				bDoTree = false;
 
 		bool paramChanged = false;
 		if (bDoTree)
 		{
-			if (doSlider(uiRenderer, _T("branch pow"), SRect(20.0f, 40.0f, 100.0f, 20.0f), &g_branchPow, 0.1f, 30.0f))
+			if (doSlider(uiRenderer, L"branch pow", SRect(20.0f, 40.0f, 100.0f, 20.0f), &g_branchPow, 0.1f, 30.0f))
 				paramChanged = true;
-			if (doSlider(uiRenderer, _T("scale"), SRect(20.0f, 85.0f, 100.0f, 20.0f), &g_scale, 0.1f, 100.0f))
+			if (doSlider(uiRenderer, L"scale", SRect(20.0f, 85.0f, 100.0f, 20.0f), &g_scale, 0.1f, 100.0f))
 				paramChanged = true;
-			if (doSlider(uiRenderer, _T("max angle"), SRect(20.0f, 130.0f, 100.0f, 20.0f), &g_maxBranchAngle, -M_PI*2.0f, M_PI*2.0f))
+			if (doSlider(uiRenderer, L"max angle", SRect(20.0f, 130.0f, 100.0f, 20.0f), &g_maxBranchAngle, -M_PI*2.0f, M_PI*2.0f))
 				paramChanged = true;
-			if (doSlider(uiRenderer, _T("thick scale"), SRect(20.0f, 175.0f, 100.0f, 20.0f), &g_thickScale, 0.1f, 20.0f))
+			if (doSlider(uiRenderer, L"thick scale", SRect(20.0f, 175.0f, 100.0f, 20.0f), &g_thickScale, 0.1f, 20.0f))
 				paramChanged = true;
-			doCheckBox(uiRenderer, _T("draw leaves"), SRect(20.0f, 220.0f, 100.0f, 20.0f), &g_drawLeaves);
-			if (doSlider(uiRenderer, _T("max depth"), SRect(20.0f, 265.0f, 100.0f, 20.0f), &g_maxDepth, 1.0f, 20.0f))
+			doCheckBox(uiRenderer, L"draw leaves", SRect(20.0f, 220.0f, 100.0f, 20.0f), &g_drawLeaves);
+			if (doSlider(uiRenderer, L"max depth", SRect(20.0f, 265.0f, 100.0f, 20.0f), &g_maxDepth, 1.0f, 20.0f))
 				paramChanged = true;
-			if (doSlider(uiRenderer, _T("seed"), SRect(20.0f, 310.0f, 100.0f, 20.0f), &g_seed, 0.0f, 100000.0f, true))
+			if (doSlider(uiRenderer, L"seed", SRect(20.0f, 310.0f, 100.0f, 20.0f), &g_seed, 0.0f, 100000.0f, true))
 				paramChanged = true;
-			if (doSlider(uiRenderer, _T("interval"), SRect(20.0f, 355.0f, 100.0f, 20.0f), &g_interval, -M_PI, M_PI))
+			if (doSlider(uiRenderer, L"interval", SRect(20.0f, 355.0f, 100.0f, 20.0f), &g_interval, -M_PI, M_PI))
 				paramChanged = true;
 			if (paramChanged)
 			{
 				buildTrees(window, uiRenderer);
 			}
-			bool savePng = doButton(uiRenderer, _T("save png"), SRect(20.0f, 400.0f, 100, 20.0f));
+			bool savePng = doButton(uiRenderer, L"save png", SRect(20.0f, 400.0f, 100, 20.0f));
 			if (savePng)
 			{
-				tchar exeFolder[260];
-				uti::getExecutableFolderPath(exeFolder, 260);
-				_stprintf_s<260>(exeFolder, _T("%s%s"), exeFolder, _T("\\tree.png"));
+				wchar_t exeFolder[260];
+				uti::getExecutableFolderPathW(exeFolder, 260);
+				
+				swprintf_s<260>(exeFolder, L"%s%s", exeFolder, L"\\tree.png");
 				if (uiRenderer->SavePngImage(g_itemrt, exeFolder))
 					Logger.Info(_T("Saved image to %s"), exeFolder);
 			}
 		}
 		else if (bDoTerrain)
 		{
-			if (doSlider(uiRenderer, _T("Near Seed"), SRect(20.0f, 40.0f, 100.0f, 20.0f), &g_nearYOffset, -1000.0f, 1000.0f, true))
+			if (doSlider(uiRenderer, L"Near Seed", SRect(20.0f, 40.0f, 100.0f, 20.0f), &g_nearYOffset, -1000.0f, 1000.0f, true))
 				paramChanged = true;
 
-			if (doSlider(uiRenderer, _T("Mid Seed"), SRect(20.0f, 90.0f, 100.0f, 20.0f), &g_midYOffset, -1000.0f, 1000.0f, true))
+			if (doSlider(uiRenderer, L"Mid Seed", SRect(20.0f, 90.0f, 100.0f, 20.0f), &g_midYOffset, -1000.0f, 1000.0f, true))
 				paramChanged = true;
 
-			if (doSlider(uiRenderer, _T("Far Seed"), SRect(20.0f, 135.0f, 100.0f, 20.0f), &g_farYOffset, -1000.0f, 1000.0f, true))
+			if (doSlider(uiRenderer, L"Far Seed", SRect(20.0f, 135.0f, 100.0f, 20.0f), &g_farYOffset, -1000.0f, 1000.0f, true))
 				paramChanged = true;
 
-			if (doSlider(uiRenderer, _T("Persistance"), SRect(20.0f, 180.0f, 100.0f, 20.0f), &g_persistance, 0.0f, 1.0f))
+			if (doSlider(uiRenderer, L"Persistance", SRect(20.0f, 180.0f, 100.0f, 20.0f), &g_persistance, 0.0f, 1.0f))
 				paramChanged = true;
 
-			if (doSlider(uiRenderer, _T("Octaves"), SRect(20.0f, 225.0f, 100.0f, 20.0f), &g_octaves, 1.0f, 20.0f, true))
+			if (doSlider(uiRenderer, L"Octaves", SRect(20.0f, 225.0f, 100.0f, 20.0f), &g_octaves, 1.0f, 20.0f, true))
 				paramChanged = true;
 			
-			if (doSlider(uiRenderer, _T("Far Scale"), SRect(20.0f, 270.0f, 100.0f, 20.0f), &g_farHeightScale , 0.0f, 1.0f))
+			if (doSlider(uiRenderer, L"Far Scale", SRect(20.0f, 270.0f, 100.0f, 20.0f), &g_farHeightScale , 0.0f, 1.0f))
 				paramChanged = true;
 
-			if (doSlider(uiRenderer, _T("Mid Scale"), SRect(20.0f, 315.0f, 100.0f, 20.0f), &g_midHeightScale, 0.0f, 1.0f))
+			if (doSlider(uiRenderer, L"Mid Scale", SRect(20.0f, 315.0f, 100.0f, 20.0f), &g_midHeightScale, 0.0f, 1.0f))
 				paramChanged = true;
 
-			if (doSlider(uiRenderer, _T("Near Scale"), SRect(20.0f, 360.0f, 100.0f, 20.0f), &g_nearHeightScale, 0.0f, 1.0f))
+			if (doSlider(uiRenderer, L"Near Scale", SRect(20.0f, 360.0f, 100.0f, 20.0f), &g_nearHeightScale, 0.0f, 1.0f))
 				paramChanged = true;
 
-			if (doSlider(uiRenderer, _T("Far Offset"), SRect(20.0f, 405.0f, 100.0f, 20.0f), &g_farHeightOffset, -1000.0f, 1000.0f))
+			if (doSlider(uiRenderer, L"Far Offset", SRect(20.0f, 405.0f, 100.0f, 20.0f), &g_farHeightOffset, -1000.0f, 1000.0f))
 				paramChanged = true;
 
-			if (doSlider(uiRenderer, _T("Mid Offset"), SRect(20.0f, 450.0f, 100.0f, 20.0f), &g_midHeightOffset, -1000.0f, 1000.0f))
+			if (doSlider(uiRenderer, L"Mid Offset", SRect(20.0f, 450.0f, 100.0f, 20.0f), &g_midHeightOffset, -1000.0f, 1000.0f))
 				paramChanged = true;
 
-			if (doSlider(uiRenderer, _T("Near Offset"), SRect(20.0f, 495.0f, 100.0f, 20.0f), &g_nearHeightOffset, -1000.0f, 1000.0f))
+			if (doSlider(uiRenderer, L"Near Offset", SRect(20.0f, 495.0f, 100.0f, 20.0f), &g_nearHeightOffset, -1000.0f, 1000.0f))
 				paramChanged = true;
 
 			// Right Side
-			if (doSlider(uiRenderer, _T("Far Speed"), SRect(window.Width()-220.0f, 40.0f, 200.0f, 20.0f), &g_speedFar, -10.f, 10.0f))
+			if (doSlider(uiRenderer, L"Far Speed", SRect(window.Width()-220.0f, 40.0f, 200.0f, 20.0f), &g_speedFar, -10.f, 10.0f))
 				paramChanged = true;
 
-			if (doSlider(uiRenderer, _T("Mid Speed"), SRect(window.Width()-220.0f, 90.0f, 200.0f, 20.0f), &g_speedMid, -10.0f, 10.0f))
+			if (doSlider(uiRenderer, L"Mid Speed", SRect(window.Width()-220.0f, 90.0f, 200.0f, 20.0f), &g_speedMid, -10.0f, 10.0f))
 				paramChanged = true;
 
-			if (doSlider(uiRenderer, _T("Near Speed"), SRect(window.Width()-220.0f, 135.0f, 200.0f, 20.0f), &g_speedNear, -10.0f, 10.0f))
+			if (doSlider(uiRenderer, L"Near Speed", SRect(window.Width()-220.0f, 135.0f, 200.0f, 20.0f), &g_speedNear, -10.0f, 10.0f))
 				paramChanged = true;
 
-			bool savePng = doButton(uiRenderer, _T("save"), SRect(20.0f, 540.0f, 100, 20.0f));
+			bool savePng = doButton(uiRenderer, L"save", SRect(20.0f, 540.0f, 100, 20.0f));
 			if (savePng)
 			{
-				tchar exeFolder[260];
-				uti::getExecutableFolderPath(exeFolder, 260);
-				_stprintf_s<260>(exeFolder, _T("%s%s"), exeFolder, _T("\\terrain.png"));
+				wchar_t exeFolder[260];
+				uti::getExecutableFolderPathW(exeFolder, 260);
+				swprintf_s<260>(exeFolder, L"%s%s", exeFolder, L"\\terrain.png");
 				if(uiRenderer->SavePngImage(g_itemrt, exeFolder))
 					Logger.Info(_T("Saved image to %s"), exeFolder);
 			}

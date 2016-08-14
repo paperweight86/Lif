@@ -318,12 +318,12 @@ bool CProcedrualBinaryTree::Branch(SBranch& last, float angle, int& depth)
 		m_leafIndexes.push_back(m_vertices.size() - 1);
 		float2 branchV = last.v0 - last.v3;
 		branchV = branchV / sqrt(pow(branchV.x, 2.0f) + pow(branchV.y, 2.0f));
-		float2 res = uti::dot(float2(0.0f, -1.0f), branchV);
+		float2 res = uti::dot(float2(0.0f, 1.0f), branchV);
 		float angle = acos(res.x);
-		angle = angle * 57.295779513082320876798154814105f - 180.0f;
+		angle = angle * 57.295779513082320876798154814105f;
 
 		float2 leafPos = last.v3 - last.v2;
-		float distance = sqrt(pow(leafPos.x, 2.0f) + pow(leafPos.y, 2.0f));
+		float distance = sqrt(uti::dot(leafPos,leafPos).x);
 		leafPos = leafPos / distance;
 
 		float3 p0 = float3(leafPos);
@@ -337,7 +337,7 @@ bool CProcedrualBinaryTree::Branch(SBranch& last, float angle, int& depth)
 		float angle2 = acosf(res.x);
 		angle2 = angle2 * 57.295779513082320876798154814105f;
 
-		m_leafRotations.push_back(angle2);
+		m_leafRotations.push_back(angle);
 		m_debugPositions.push_back(last.v2+leafPos+(p2v2*2.0f));
 	}
 	else if (!left)
