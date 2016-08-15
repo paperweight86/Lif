@@ -95,8 +95,6 @@ bool  g_drawLeaves = true;
 r32 g_maxDepth = 8.0f;
 r32 g_interval = M_PI / 12.0f;
 
-rhandle g_hLeaf = nullrhandle;
-
 rhandle g_winrt = nullrhandle;
 rhandle g_itemrt = nullrhandle;
 
@@ -402,6 +400,24 @@ bool doTextBox(I2DRenderer* pRenderer, const wchar_t* text, SRect rect, float* p
 	return changed;
 }
 
+enum ui_context
+{
+	ui_context_none,
+	ui_context_rollup,
+
+};
+
+ui_context g_uiContext = ui_context_none;
+
+bool doRollUpStack(I2DRenderer* pRenderer, const wchar_t* text, SRect rect)
+{
+	// TODO: [DanJ] Push a context then have controls ask the context (if available) for their position based upon their measure parameters - x, y, width, height, padding/margin
+
+	// OR do we create a scoped object which becomes the context and gets called on for layout - seems too OOPy?
+
+	return true;
+}
+
 bool doSlider( I2DRenderer* pRenderer, const wchar_t* text, SRect rect, float* pValue, float valueMin, float valueMax, bool bRound = false)
 {
 	bool didSlide = false;
@@ -527,7 +543,6 @@ void buildTrees(CWinWindow& window, I2DRenderer* p2dRenderer)
 		//      - random death/stunting
 		//      - overgrowth death/stunting
 		//		- noise
-		//	    - live editing (C# wrapper?)
 		CProcedrualBinaryTree tree;
 		tree.m_maxTrunks = 1;
 		tree.m_scale = g_scale;
@@ -563,9 +578,6 @@ void buildTrees(CWinWindow& window, I2DRenderer* p2dRenderer)
 		delete [] verts;
 		g_trees[i] = hOnePolyTree;
 	}
-	// TODO: update scale don't recreate
-	p2dRenderer->DestroyResource(g_hLeaf);
-	g_hLeaf = p2dRenderer->CreateEllipseGeometry(float2(), float2(2.0f*g_scale/6.0f, 2.0f*g_scale/6.0f));
 }
 
 void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
@@ -573,9 +585,9 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 	Leaf leaf;
 	LeafConfig leafCfg;
 	leafCfg.branch_angle = M_PI / 20.0f;
-	leafCfg.branch_max_len = 7.0f;
+	leafCfg.branch_max_len = 4.0f;
 	//leafCfg.branch_count = 2.0f;
-	leafCfg.trunk_len = 30.0f;
+	leafCfg.trunk_len = 17.5f;
 	leafCfg.trunk_resolution = 8;
 	//leafCfg.trunk_stem_ratio = 0.1f;
 	GenerateLeaf(&leaf, leafCfg);
@@ -599,7 +611,7 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 	CreateColourFromRGB(col, 0x49311cFF);
 	rhandle hRectFillBrush = uiRenderer->CreateBrush(col);
 	g_hBranchBrush = hRectFillBrush;
-	CreateColourFromRGB(leafCol, 0x006600FF);
+	CreateColourFromRGB(leafCol, 0x15471AFF);
 	hLeafBrush = uiRenderer->CreateBrush(leafCol);
 	g_pTerrainVerts = new float2[window.Width() + 2];
 	//buildTerrain(0, 0.0f, 100.0f, window.Width(), window.Height()/2, uiRenderer);
@@ -766,34 +778,37 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 		bool paramChanged = false;
 		if (bDoTree)
 		{
-			if (doSlider(uiRenderer, L"branch pow", SRect(20.0f, 40.0f, 100.0f, 20.0f), &g_branchPow, 0.1f, 30.0f))
-				paramChanged = true;
-			if (doSlider(uiRenderer, L"scale", SRect(20.0f, 85.0f, 100.0f, 20.0f), &g_scale, 0.1f, 100.0f))
-				paramChanged = true;
-			if (doSlider(uiRenderer, L"max angle", SRect(20.0f, 130.0f, 100.0f, 20.0f), &g_maxBranchAngle, -M_PI*2.0f, M_PI*2.0f))
-				paramChanged = true;
-			if (doSlider(uiRenderer, L"thick scale", SRect(20.0f, 175.0f, 100.0f, 20.0f), &g_thickScale, 0.1f, 20.0f))
-				paramChanged = true;
-			doCheckBox(uiRenderer, L"draw leaves", SRect(20.0f, 220.0f, 100.0f, 20.0f), &g_drawLeaves);
-			if (doSlider(uiRenderer, L"max depth", SRect(20.0f, 265.0f, 100.0f, 20.0f), &g_maxDepth, 1.0f, 20.0f))
-				paramChanged = true;
-			if (doSlider(uiRenderer, L"seed", SRect(20.0f, 310.0f, 100.0f, 20.0f), &g_seed, 0.0f, 100000.0f, true))
-				paramChanged = true;
-			if (doSlider(uiRenderer, L"interval", SRect(20.0f, 355.0f, 100.0f, 20.0f), &g_interval, -M_PI, M_PI))
-				paramChanged = true;
-			if (paramChanged)
+			if (doRollUpStack(uiRenderer, L"main", SRect(10.0f, 50.0f, 120.0f, 20.0f)))
 			{
-				buildTrees(window, uiRenderer);
-			}
-			bool savePng = doButton(uiRenderer, L"save png", SRect(20.0f, 400.0f, 100, 20.0f));
-			if (savePng)
-			{
-				wchar_t exeFolder[260];
-				uti::getExecutableFolderPathW(exeFolder, 260);
-				
-				swprintf_s<260>(exeFolder, L"%s%s", exeFolder, L"\\tree.png");
-				if (uiRenderer->SavePngImage(g_itemrt, exeFolder))
-					Logger.Info(_T("Saved image to %s"), exeFolder);
+				if (doSlider(uiRenderer, L"branch pow", SRect(20.0f, 40.0f, 100.0f, 20.0f), &g_branchPow, 0.1f, 30.0f))
+					paramChanged = true;
+				if (doSlider(uiRenderer, L"scale", SRect(20.0f, 85.0f, 100.0f, 20.0f), &g_scale, 0.1f, 100.0f))
+					paramChanged = true;
+				if (doSlider(uiRenderer, L"max angle", SRect(20.0f, 130.0f, 100.0f, 20.0f), &g_maxBranchAngle, -M_PI*2.0f, M_PI*2.0f))
+					paramChanged = true;
+				if (doSlider(uiRenderer, L"thick scale", SRect(20.0f, 175.0f, 100.0f, 20.0f), &g_thickScale, 0.1f, 20.0f))
+					paramChanged = true;
+				doCheckBox(uiRenderer, L"draw leaves", SRect(20.0f, 220.0f, 100.0f, 20.0f), &g_drawLeaves);
+				if (doSlider(uiRenderer, L"max depth", SRect(20.0f, 265.0f, 100.0f, 20.0f), &g_maxDepth, 1.0f, 20.0f))
+					paramChanged = true;
+				if (doSlider(uiRenderer, L"seed", SRect(20.0f, 310.0f, 100.0f, 20.0f), &g_seed, 0.0f, 100000.0f, true))
+					paramChanged = true;
+				if (doSlider(uiRenderer, L"interval", SRect(20.0f, 355.0f, 100.0f, 20.0f), &g_interval, -M_PI, M_PI))
+					paramChanged = true;
+				if (paramChanged)
+				{
+					buildTrees(window, uiRenderer);
+				}
+				bool savePng = doButton(uiRenderer, L"save png", SRect(20.0f, 400.0f, 100, 20.0f));
+				if (savePng)
+				{
+					wchar_t exeFolder[260];
+					uti::getExecutableFolderPathW(exeFolder, 260);
+
+					swprintf_s<260>(exeFolder, L"%s%s", exeFolder, L"\\tree.png");
+					if (uiRenderer->SavePngImage(g_itemrt, exeFolder))
+						Logger.Info(_T("Saved image to %s"), exeFolder);
+				}
 			}
 		}
 		else if (bDoTerrain)
@@ -871,7 +886,6 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 
 	delete[] g_trees;
 
-	uiRenderer->DestroyResource(g_hLeaf);
 	uiRenderer->DestroyResource(g_hBranchBrush);
 	uiRenderer->DestroyResource(hLeafBrush);
 

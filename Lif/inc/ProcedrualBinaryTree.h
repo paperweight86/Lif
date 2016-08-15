@@ -44,7 +44,7 @@ namespace lif
 		std::vector<float>	m_leafRotations;
 		std::vector<float2>	m_debugPositions;
 	private:
-		virtual bool Branch(SBranch& last, float angle, int& depth);
+		virtual bool Branch(SBranch& last, float angle, int& depth, bool isBushel);
 		virtual void Trunk(float2 start, int& trunk);
 		virtual bool TestIntersection(float2 lineA1, float2 lineA2, float2 lineB1, float2 lineB2, float2& result);
 		virtual void CalcBranchStartPoints(const float2& startPoint, const float2& endPoint,
