@@ -142,32 +142,6 @@ bool g_keysLast[0xFF];
 
 void DoErosion(CWinWindow& window, I2DRenderer* uiRenderer);
 
-bool doButton(I2DRenderer* pRenderer, const wchar_t* text, SRect rect)
-{
-	bool isDown = g_rButtonUp && (g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h);
-	SColour col;
-	// Border
-	CreateColourFromRGB(col, 0x6073B2FF);
-	SRect borderRect = rect;
-	borderRect.x -= 1.0f;
-	borderRect.y -= 1.0f;
-	borderRect.w += 2.0f;
-	borderRect.h += 2.0f;
-	pRenderer->DrawRectangle(pRenderer->CreateBrush(col), borderRect);
-	// Background
-	rhandle textBrush = g_hTextBrush;
-	if (g_rButton && (g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h))
-	{
-		CreateColourFromRGB(col, 0x000000FF);
-		textBrush = g_hWhiteTextBrush;
-	}
-	pRenderer->DrawRectangle(pRenderer->CreateBrush(col), rect);
-
-	pRenderer->DrawTextString(text, rect, textBrush);
-
-	return isDown;
-}
-
 bool doToggleButton(I2DRenderer* pRenderer, const wchar_t* text, SRect rect, bool* toggle )
 {
 	bool isDown = g_rButtonUp && (g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h);
@@ -409,17 +383,83 @@ enum ui_context
 
 ui_context g_uiContext = ui_context_none;
 
+const int meaasureStackSize = 30;
+int measureStackPos = 0;
+SRect measureStack[meaasureStackSize];
+
 bool doRollUpStack(I2DRenderer* pRenderer, const wchar_t* text, SRect rect)
 {
 	// TODO: [DanJ] Push a context then have controls ask the context (if available) for their position based upon their measure parameters - x, y, width, height, padding/margin
 
 	// OR do we create a scoped object which becomes the context and gets called on for layout - seems too OOPy?
+	g_uiContext = ui_context_rollup;
+
+	measureStackPos = 0;
+	measureStack[measureStackPos] = rect;
 
 	return true;
 }
 
+SRect CalcRollupRect(SRect rect)
+{
+	for (int i = 0; i <= measureStackPos; ++i)
+		rect.y += measureStack[i].y + measureStack[i].h + 40.0f;
+
+	return rect;
+}
+
+SRect CalcRect(SRect rect)
+{
+	switch (g_uiContext)
+	{
+	case ui_context_rollup:
+		return CalcRollupRect(rect);
+	case ui_context_none:
+	default:
+		return rect;
+	}
+}
+
+bool doButton(I2DRenderer* pRenderer, const wchar_t* text, SRect rect)
+{
+	SRect og = rect;
+	rect = CalcRect(rect);
+
+	assert(measureStackPos < meaasureStackSize);
+	measureStack[measureStackPos++] = og;
+
+	bool isDown = g_rButtonUp && (g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h);
+	SColour col;
+	// Border
+	CreateColourFromRGB(col, 0x6073B2FF);
+	SRect borderRect = rect;
+	borderRect.x -= 1.0f;
+	borderRect.y -= 1.0f;
+	borderRect.w += 2.0f;
+	borderRect.h += 2.0f;
+	pRenderer->DrawRectangle(pRenderer->CreateBrush(col), borderRect);
+	// Background
+	rhandle textBrush = g_hTextBrush;
+	if (g_rButton && (g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h))
+	{
+		CreateColourFromRGB(col, 0x000000FF);
+		textBrush = g_hWhiteTextBrush;
+	}
+	pRenderer->DrawRectangle(pRenderer->CreateBrush(col), rect);
+
+	pRenderer->DrawTextString(text, rect, textBrush);
+
+	return isDown;
+}
+
 bool doSlider( I2DRenderer* pRenderer, const wchar_t* text, SRect rect, float* pValue, float valueMin, float valueMax, bool bRound = false)
 {
+	SRect og = rect;
+	rect = CalcRect(rect);
+
+	assert(measureStackPos < meaasureStackSize);
+	measureStack[measureStackPos++] = og;
+
 	bool didSlide = false;
 	if (bRound)
 		swprintf_s<255>(g_valueBuffer, L"%d", (int)(*pValue));
@@ -466,6 +506,12 @@ bool doSlider( I2DRenderer* pRenderer, const wchar_t* text, SRect rect, float* p
 
 bool doCheckBox(I2DRenderer* pRenderer, const wchar_t* text, SRect rect, bool* pValue)
 {
+	SRect og = rect;
+	rect = CalcRect(rect);
+
+	assert(measureStackPos < meaasureStackSize);
+	measureStack[measureStackPos++] = og;
+
 	if (g_rButtonUp && g_x > rect.x && g_x < rect.x + rect.w && g_y > rect.y && g_y < rect.y + rect.h)
 	{
 		(*pValue) = !(*pValue);
@@ -585,9 +631,9 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 	Leaf leaf;
 	LeafConfig leafCfg;
 	leafCfg.branch_angle = M_PI / 20.0f;
-	leafCfg.branch_max_len = 4.0f;
+	leafCfg.branch_max_len = 6.0f;
 	//leafCfg.branch_count = 2.0f;
-	leafCfg.trunk_len = 17.5f;
+	leafCfg.trunk_len = 32.0f;
 	leafCfg.trunk_resolution = 8;
 	//leafCfg.trunk_stem_ratio = 0.1f;
 	GenerateLeaf(&leaf, leafCfg);
@@ -739,7 +785,7 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 							uiRenderer->DrawFillGeometry(leafGeo, hLeafBrush,
 								float2(debugPos.x + treePos.x + (float)(window.Width() / 2), 
 									   debugPos.y + treePos.y + (float)window.Height()),
-								float2(1.00f, 1.00f),
+								float2(g_scale / 100.0f, g_scale / 100.0f),
 								g_leafRotations[i][j]);
 							
 						++j;
@@ -778,28 +824,28 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 		bool paramChanged = false;
 		if (bDoTree)
 		{
-			if (doRollUpStack(uiRenderer, L"main", SRect(10.0f, 50.0f, 120.0f, 20.0f)))
+			if (doRollUpStack(uiRenderer, L"main", SRect(20.0f, 20.0f, 120.0f, 0.0f)))
 			{
-				if (doSlider(uiRenderer, L"branch pow", SRect(20.0f, 40.0f, 100.0f, 20.0f), &g_branchPow, 0.1f, 30.0f))
+				if (doSlider(uiRenderer, L"branch pow", SRect(20.0f, 0.0f, 100.0f, 20.0f), &g_branchPow, 0.1f, 30.0f))
 					paramChanged = true;
-				if (doSlider(uiRenderer, L"scale", SRect(20.0f, 85.0f, 100.0f, 20.0f), &g_scale, 0.1f, 100.0f))
+				if (doSlider(uiRenderer, L"scale", SRect(20.0f, 0.0f, 100.0f, 20.0f), &g_scale, 0.1f, 100.0f))
 					paramChanged = true;
-				if (doSlider(uiRenderer, L"max angle", SRect(20.0f, 130.0f, 100.0f, 20.0f), &g_maxBranchAngle, -M_PI*2.0f, M_PI*2.0f))
+				if (doSlider(uiRenderer, L"max angle", SRect(20.0f, 0.0f, 100.0f, 20.0f), &g_maxBranchAngle, -M_PI*2.0f, M_PI*2.0f))
 					paramChanged = true;
-				if (doSlider(uiRenderer, L"thick scale", SRect(20.0f, 175.0f, 100.0f, 20.0f), &g_thickScale, 0.1f, 20.0f))
+				if (doSlider(uiRenderer, L"thick scale", SRect(20.0f, 0.0f, 100.0f, 20.0f), &g_thickScale, 0.1f, 20.0f))
 					paramChanged = true;
-				doCheckBox(uiRenderer, L"draw leaves", SRect(20.0f, 220.0f, 100.0f, 20.0f), &g_drawLeaves);
-				if (doSlider(uiRenderer, L"max depth", SRect(20.0f, 265.0f, 100.0f, 20.0f), &g_maxDepth, 1.0f, 20.0f))
+				doCheckBox(uiRenderer, L"draw leaves", SRect(20.0f, 0.0f, 100.0f, 20.0f), &g_drawLeaves);
+				if (doSlider(uiRenderer, L"max depth", SRect(20.0f, 0.0f, 100.0f, 20.0f), &g_maxDepth, 1.0f, 20.0f))
 					paramChanged = true;
-				if (doSlider(uiRenderer, L"seed", SRect(20.0f, 310.0f, 100.0f, 20.0f), &g_seed, 0.0f, 100000.0f, true))
+				if (doSlider(uiRenderer, L"seed", SRect(20.0f, 0.0f, 100.0f, 20.0f), &g_seed, 0.0f, 100000.0f, true))
 					paramChanged = true;
-				if (doSlider(uiRenderer, L"interval", SRect(20.0f, 355.0f, 100.0f, 20.0f), &g_interval, -M_PI, M_PI))
+				if (doSlider(uiRenderer, L"interval", SRect(20.0f, 0.0f, 100.0f, 20.0f), &g_interval, -M_PI, M_PI))
 					paramChanged = true;
 				if (paramChanged)
 				{
 					buildTrees(window, uiRenderer);
 				}
-				bool savePng = doButton(uiRenderer, L"save png", SRect(20.0f, 400.0f, 100, 20.0f));
+				bool savePng = doButton(uiRenderer, L"save png", SRect(20.0f, 0.0f, 100, 20.0f));
 				if (savePng)
 				{
 					wchar_t exeFolder[260];

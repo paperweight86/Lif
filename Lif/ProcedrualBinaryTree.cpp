@@ -173,13 +173,12 @@ bool CProcedrualBinaryTree::Branch(SBranch& last, float angle, int& depth, bool 
 	float lScale = 1.0f - powf(((float)depth / (float)m_maxDepth), m_branchPow) * (scaleRnd / 100.0f);
 	if (isBushel)
 		lScale *= 0.2f;
-	//lScale *= lScale;
 	lScale = std::max<float>(0.001f, lScale);
+
 	scaleRnd = (float)(rand() % 100);
 	float rScale = 1.0f - powf(((float)depth / (float)m_maxDepth), m_branchPow) * (scaleRnd / 100.0f);
 	if (isBushel)
 		rScale *= 0.2f;
-	//rScale *= rScale;
 	rScale = std::max<float>(0.001f, rScale);
 
 	rightBranch.start = leftBranch.start = last.end;
@@ -286,12 +285,18 @@ bool CProcedrualBinaryTree::Branch(SBranch& last, float angle, int& depth, bool 
 	bool right = true;
 	bool left = true;
 
-	if (Branch(leftBranch, angle + angleLeft, depthLeft, isBushel))
+	bool earlyDeath = (rand() % 1000 > 950);
+
+	if (earlyDeath)
+		left = false;
+	else if (Branch(leftBranch, angle + angleLeft, depthLeft, isBushel))
 		m_vertices.push_back(intersectionTopCenter);
 	else
 		left = false;
 	
-	if (Branch(rightBranch, angle - angleRight, depthRight, isBushel))
+	if (earlyDeath)
+		right = false;
+	else if (Branch(rightBranch, angle - angleRight, depthRight, isBushel))
 		m_vertices.push_back(last.v3);
 	else
 		right = false;
@@ -301,24 +306,10 @@ bool CProcedrualBinaryTree::Branch(SBranch& last, float angle, int& depth, bool 
 		if (!isBushel)
 		{
 			isBushel = true;
-			//m_vertices.push_back(last.v2);
-			//m_vertices.push_back(last.v3);
-
-			//m_leafIndexes.push_back(m_vertices.size() - 1);
-
-			//float2 halfV = (last.v3 - last.v2) / 2.0f;
-			//float2 toLeaf = (last.v1 - last.v2);
-			//float len = sqrtf(uti::dot(toLeaf, toLeaf).x);
-			//toLeaf = toLeaf / len;
-			//angle = acosf(uti::dot(float2(1.0f, 0.0f), toLeaf).x) - M_PI_2;
-			////TODO: This also works but it's slower?
-			////angle = atan2f(toLeaf.y, toLeaf.x) - M_PI_2;
-			//angle = angle * 57.295779513082320876798154814105f;
-
-			//m_debugPositions.push_back(last.v2 + halfV);
-			//m_leafRotations.push_back(angle);
+			depthLeft = m_maxDepth;
+			depthRight = m_maxDepth;
 		}
-		//else
+
 		{
 			right = true;
 			left = true;
