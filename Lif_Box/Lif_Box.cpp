@@ -5,7 +5,7 @@
 #include "2DRendererFactory.h"
 
 #include "ScopedLog.h"
-#include "FileSystem.h"
+#include "file_system.h"
 
 using namespace tod;
 
@@ -190,7 +190,7 @@ bool doTextBox(I2DRenderer* pRenderer, const wchar_t* text, SRect rect, float* p
 		swprintf_s<255>(g_focusValueBuffer, L"%s", g_valueBuffer);
 		auto valueLen = wcslen(g_focusValueBuffer);
 		if (g_focusedTextPos >= valueLen)
-			g_focusedTextPos = (u32)max<size_t>(valueLen, 0);
+			g_focusedTextPos = (u32)std::max<size_t>(valueLen, 0);
 		wstring str = g_focusValueBuffer;
 		wstring first = str.substr(0, g_focusedTextPos);
 		wstring last = L"";
@@ -217,7 +217,7 @@ bool doTextBox(I2DRenderer* pRenderer, const wchar_t* text, SRect rect, float* p
 			{
 				g_focusedTextPos++;
 				auto valueLen = wcslen(g_focusValueBuffer);
-				g_focusedTextPos = (u32)min<size_t>(max<size_t>(g_focusedTextPos, 0), valueLen);
+				g_focusedTextPos = (u32)std::min<size_t>(std::max<size_t>(g_focusedTextPos, 0), valueLen);
 				wstring str = g_focusValueBuffer;
 				str = str.replace(g_focusedTextPos - 1, 1, L"");
 				wstring first = str.substr(0, g_focusedTextPos);
@@ -232,7 +232,7 @@ bool doTextBox(I2DRenderer* pRenderer, const wchar_t* text, SRect rect, float* p
 			{
 				g_focusedTextPos--;
 				auto valueLen = wcslen(g_focusValueBuffer);
-				g_focusedTextPos = (u32)min<size_t>(max<size_t>(g_focusedTextPos, 0), valueLen);
+				g_focusedTextPos = (u32)std::min<size_t>(std::max<size_t>(g_focusedTextPos, 0), valueLen);
 				wstring str = g_focusValueBuffer;
 				str = str.replace(g_focusedTextPos + 1, 1, L"");
 				wstring first = str.substr(0, g_focusedTextPos);
@@ -251,7 +251,7 @@ bool doTextBox(I2DRenderer* pRenderer, const wchar_t* text, SRect rect, float* p
 				
 				auto valueLen = str.length();
 				g_focusedTextPos--;
-				g_focusedTextPos = (u32)min<size_t>(max<size_t>(g_focusedTextPos, 0), valueLen);
+				g_focusedTextPos = (u32)std::min<size_t>(std::max<size_t>(g_focusedTextPos, 0), valueLen);
 				wstring first = str.substr(0, g_focusedTextPos);
 				wstring last = L"";
 				if (valueLen != g_focusedTextPos)
@@ -282,7 +282,7 @@ bool doTextBox(I2DRenderer* pRenderer, const wchar_t* text, SRect rect, float* p
 
 				auto valueLen = str.length() + 1;
 				g_focusedTextPos++;
-				g_focusedTextPos = (u32)min<size_t>(max<size_t>(g_focusedTextPos, 0), valueLen);
+				g_focusedTextPos = (u32)std::min<size_t>(std::max<size_t>(g_focusedTextPos, 0), valueLen);
 				wstring first = str.substr(0, g_focusedTextPos-1);
 				first.push_back((wchar_t)keyCode);
 				wstring last;
@@ -298,7 +298,7 @@ bool doTextBox(I2DRenderer* pRenderer, const wchar_t* text, SRect rect, float* p
 
 					auto valueLen = str.length() + 1;
 					g_focusedTextPos++;
-					g_focusedTextPos = (u32)min<size_t>(max<size_t>(g_focusedTextPos, 0), valueLen);
+					g_focusedTextPos = (u32)std::min<size_t>(std::max<size_t>(g_focusedTextPos, 0), valueLen);
 					wstring first = str.substr(0, g_focusedTextPos - 1);
 					first.append(L".");
 					wstring last;
@@ -315,7 +315,7 @@ bool doTextBox(I2DRenderer* pRenderer, const wchar_t* text, SRect rect, float* p
 
 					auto valueLen = str.length() + 1;
 					g_focusedTextPos++;
-					g_focusedTextPos = (u32)min<size_t>(max<size_t>(g_focusedTextPos, 0), valueLen);
+					g_focusedTextPos = (u32)std::min<size_t>(std::max<size_t>(g_focusedTextPos, 0), valueLen);
 					wstring first = str.substr(0, g_focusedTextPos - 1);
 					first.insert(0, L"-");
 					wstring last;
@@ -344,7 +344,7 @@ bool doTextBox(I2DRenderer* pRenderer, const wchar_t* text, SRect rect, float* p
 				wstring str = g_focusValueBuffer;
 				str = str.replace(g_focusedTextPos, 1, L"");
 				swprintf_s<255>(g_valueBuffer, L"%s", str.c_str());
-				(*pValue) = max<float>(min<float>(_wtof(g_valueBuffer), valueMax), valueMin);
+				(*pValue) = std::max<float>(std::min<float>(_wtof(g_valueBuffer), valueMax), valueMin);
 				g_focusedTextPos = uint32_max;
 				changed = true;
 			}
@@ -552,7 +552,7 @@ void OnMouseCallback(int16 x, int16 y, bool rButton, bool mButton, bool lButton,
 	//Logger.Info(_T("%d, %d"), g_x, g_y);
 }
 
-void OnKeyboardCallback(u32 keyCode, bool isDown, bool isSyskey)
+void OnKeyboardCallback(u64 keyCode, bool isDown, bool isSyskey)
 {
 	g_keysDown[keyCode] = isDown;
 }
@@ -853,7 +853,7 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 
 					swprintf_s<260>(exeFolder, L"%s%s", exeFolder, L"\\tree.png");
 					if (uiRenderer->SavePngImage(g_itemrt, exeFolder))
-						Logger.Info(_T("Saved image to %s"), exeFolder);
+						log::inf_out(_T("Saved image to %s"), exeFolder);
 				}
 			}
 		}
@@ -909,7 +909,7 @@ void doTree(CWinWindow& window, I2DRenderer* uiRenderer)
 				uti::getExecutableFolderPathW(exeFolder, 260);
 				swprintf_s<260>(exeFolder, L"%s%s", exeFolder, L"\\terrain.png");
 				if(uiRenderer->SavePngImage(g_itemrt, exeFolder))
-					Logger.Info(_T("Saved image to %s"), exeFolder);
+					log::inf_out(_T("Saved image to %s"), exeFolder);
 			}
 		}
 		uiRenderer->EndDraw();
@@ -970,12 +970,12 @@ int lif_main()
 	I2DRenderer* uiRenderer = nullptr;
 	if (!C2DRendererFactory::Create(&uiRenderer, e2DRenderer_Direct2D))
 	{
-		Logger.Error(_T("Fatal: Failed to create Direct2D UI renderer"));
+		log::err_out(_T("Fatal: Failed to create Direct2D UI renderer"));
 		return -1;
 	}
 	if (!uiRenderer->Initialise(window.GetHandle(), width, height))
 	{
-		Logger.Error(_T("Fatal: Failed to initialise UI renderer"));
+		log::err_out(_T("Fatal: Failed to initialise UI renderer"));
 		return -1;
 	}
 	

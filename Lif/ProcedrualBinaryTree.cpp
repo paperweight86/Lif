@@ -246,7 +246,7 @@ bool CProcedrualBinaryTree::Branch(SBranch& last, float angle, int& depth, bool 
 	}
 	else
 	{
-		Logger.Error(_T("No left vs new left left intersection"));
+		log::err_out("No left vs new left left intersection");
 	}
 
 	float2 intersectionRight(0.0f, 0.0f);
@@ -258,7 +258,7 @@ bool CProcedrualBinaryTree::Branch(SBranch& last, float angle, int& depth, bool 
 	}
 	else
 	{ 
-		Logger.Error(_T("No right vs new right right intersection"));
+		log::err_out(_T("No right vs new right right intersection"));
 	}
 
 	float2 intersectionTopCenter(0.0f, 0.0f);
@@ -273,7 +273,7 @@ bool CProcedrualBinaryTree::Branch(SBranch& last, float angle, int& depth, bool 
 	}
 	else
 	{ 
-		Logger.Error(_T("No left vs new right left intersection"));
+		log::err_out(_T("No left vs new right left intersection"));
 	}
 
 	++depth;
